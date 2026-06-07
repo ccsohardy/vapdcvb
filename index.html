@@ -203,10 +203,15 @@
     .stats-grid { grid-template-columns: 1fr 1fr; }
   }
   @media print {
-    header, .sidebar, .form-actions, .page-header, .btn, #toast { display: none !important; }
-    .view { display: block !important; padding: 0; }
+    header, .sidebar, .form-actions, .page-header, .btn, #toast,
+    .table-toolbar, .modal-overlay, #view-dashboard, #view-new-ticket,
+    #view-saved, #view-codes, #view-xml-export { display: none !important; }
+    body, .app, .main { background: #fff !important; }
     .app { display: block; }
     .main { overflow: visible; }
+    #view-print { display: block !important; padding: 0 !important; }
+    #view-print .page-header, #view-print .btn { display: none !important; }
+    .print-notice { border: none !important; max-width: 100% !important; }
   }
 </style>
 </head>
