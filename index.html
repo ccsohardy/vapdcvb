@@ -398,8 +398,9 @@
               <span>Defendant Information</span>
               <button class="btn-scan" onclick="startLicenseScan()" title="Click then scan barcode on back of license">📷 Scan License</button>
             </div>
-            <div id="scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe">
-              ⏳ Ready to scan — swipe or scan the barcode on the back of the license...
+            <div id="scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;display:none;align-items:center;justify-content:space-between">
+              <span id="scan-status-text">⏳ Ready to scan — scan the barcode on the back of the license...</span>
+              <button class="btn-sm" onclick="cancelScan('license')" style="font-size:0.72rem;margin-left:0.5rem">✕ Cancel</button>
             </div>
             <div class="form-grid cols-4">
               <div class="field" style="grid-column:span 2">
@@ -542,8 +543,9 @@
               <span>Vehicle Information (if applicable)</span>
               <button class="btn-scan" onclick="startRegScan()" title="Click then scan vehicle registration barcode">📷 Scan Registration</button>
             </div>
-            <div id="reg-scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe">
-              ⏳ Ready to scan — scan the barcode on the vehicle registration...
+            <div id="reg-scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;display:none;align-items:center;justify-content:space-between">
+              <span id="reg-scan-status-text">⏳ Ready to scan — scan the barcode on the vehicle registration...</span>
+              <button class="btn-sm" onclick="cancelScan('registration')" style="font-size:0.72rem;margin-left:0.5rem">✕ Cancel</button>
             </div>
             <div class="form-grid cols-5">
               <div class="field">
@@ -1416,46 +1418,96 @@ function downloadXML(data) {
 }
 
 // ── LICENSE SCANNER ──
+// Uses a dedicated hidden input that gets focused when scan mode is active.
+// This is the most reliable method for USB/Bluetooth PDF417 barcode scanners
+// because scanners act like a keyboard and type into whatever field is focused.
 var scanMode = null;
-var scanBuffer = '';
 var scanTimer = null;
+
+function getScanInput() {
+  var el = document.getElementById('scan-capture-input');
+  if (!el) {
+    el = document.createElement('input');
+    el.id = 'scan-capture-input';
+    el.type = 'text';
+    el.setAttribute('autocomplete', 'off');
+    el.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0;';
+    document.body.appendChild(el);
+    el.addEventListener('input', function() {
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(function() {
+        var raw = el.value;
+        el.value = '';
+        if (raw && raw.length > 8 && scanMode) {
+          processScan(raw);
+        }
+      }, 150);
+    });
+    // Also catch Enter key from scanner
+    el.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        clearTimeout(scanTimer);
+        var raw = el.value;
+        el.value = '';
+        if (raw && raw.length > 8 && scanMode) {
+          processScan(raw);
+        }
+      }
+    });
+  }
+  return el;
+}
 
 function startLicenseScan() {
   scanMode = 'license';
-  scanBuffer = '';
   var s = document.getElementById('scan-status');
   s.style.display = 'block';
-  s.textContent = '\u23f3 Ready to scan \u2014 swipe or scan the barcode on the back of the license...';
-  document.getElementById('offense-search-input').blur();
-  showToast('\U0001f4f7 Scan mode active \u2014 scan the license barcode now');
+  s.style.background = '#dbeafe';
+  s.style.color = '#1e40af';
+  s.style.borderColor = '#bfdbfe';
+  s.textContent = '\u23f3 Ready to scan \u2014 scan the barcode on the BACK of the license now...';
+  // Blur any currently focused field so scanner data doesn't go there
+  if (document.activeElement) document.activeElement.blur();
+  // Focus the hidden capture input
+  var inp = getScanInput();
+  inp.value = '';
+  setTimeout(function() { inp.focus(); }, 50);
+  showToast('\ud83d\udcf7 Scan mode active \u2014 scan license barcode now');
 }
 
 function startRegScan() {
   scanMode = 'registration';
-  scanBuffer = '';
   var s = document.getElementById('reg-scan-status');
   s.style.display = 'block';
+  s.style.background = '#dbeafe';
+  s.style.color = '#1e40af';
+  s.style.borderColor = '#bfdbfe';
   s.textContent = '\u23f3 Ready to scan \u2014 scan the barcode on the vehicle registration...';
-  showToast('\U0001f4f7 Scan mode active \u2014 scan the registration barcode now');
+  if (document.activeElement) document.activeElement.blur();
+  var inp = getScanInput();
+  inp.value = '';
+  setTimeout(function() { inp.focus(); }, 50);
+  showToast('\ud83d\udcf7 Scan mode active \u2014 scan registration barcode now');
 }
 
-document.addEventListener('keydown', function(e) {
+// Cancel scan if user clicks elsewhere
+document.addEventListener('click', function(e) {
   if (!scanMode) return;
-  if (e.key === 'Enter') {
-    processScan(scanBuffer);
-    scanBuffer = '';
-    clearTimeout(scanTimer);
-    return;
-  }
-  if (e.key.length === 1) {
-    scanBuffer += e.key;
-    clearTimeout(scanTimer);
-    scanTimer = setTimeout(function() {
-      if (scanBuffer.length > 10) processScan(scanBuffer);
-      scanBuffer = '';
-    }, 100);
-  }
+  var scanInput = document.getElementById('scan-capture-input');
+  if (e.target.id === 'scan-capture-input') return;
+  if (e.target.classList.contains('btn-scan')) return;
+  // Refocus scan input if still in scan mode
+  if (scanInput) setTimeout(function(){ scanInput.focus(); }, 10);
 });
+
+function cancelScan(type) {
+  scanMode = null;
+  var s = document.getElementById(type === 'license' ? 'scan-status' : 'reg-scan-status');
+  if (s) s.style.display = 'none';
+  var inp = document.getElementById('scan-capture-input');
+  if (inp) { inp.value = ''; inp.blur(); }
+  showToast('Scan cancelled');
+}
 
 function processScan(raw) {
   var s = document.getElementById('scan-status');
