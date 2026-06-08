@@ -1544,66 +1544,152 @@ function processScan(raw) {
 }
 
 function parseAAMVA(raw) {
-  // AAMVA PDF417 driver license barcode standard
+  // AAMVA PDF417 DL barcode standard parser
+  // Fields are delimited by \n, \r, or the start of the next 3-letter field code
   try {
     if (raw.indexOf('@') === -1 && raw.indexOf('ANSI') === -1) return null;
-    var data = {};
-    // Extract subfile data
-    var fields = {
-      'DCS': 'last', 'DAC': 'first', 'DAD': 'middle',
-      'DBB': 'dob', 'DAG': 'address', 'DAI': 'city',
-      'DAJ': 'state', 'DAK': 'zip', 'DAQ': 'dl_num',
-      'DAU': 'height', 'DAY': 'eyes', 'DBC': 'sex',
-      'DCL': 'race', 'DAW': 'weight'
-    };
-    Object.keys(fields).forEach(function(code) {
-      var idx = raw.indexOf(code);
-      if (idx !== -1) {
-        var start = idx + code.length;
-        var end = raw.indexOf('\n', start);
-        if (end === -1) end = raw.indexOf('\r', start);
-        if (end === -1) end = start + 30;
-        data[fields[code]] = raw.substring(start, end).replace(/\r/g,'').trim();
+
+    // Normalize line endings — scanners may send \r\n, \r, or \n
+    var normalized = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // Split into lines and build a key->value map
+    var lines = normalized.split('\n');
+    var map = {};
+    lines.forEach(function(line) {
+      line = line.trim();
+      if (line.length < 4) return;
+      // AAMVA field codes are exactly 3 uppercase letters/digits
+      // Some lines may have multiple fields concatenated — handle that too
+      // Use regex to split on 3-char uppercase codes
+      var parts = line.split(/(?=[A-Z]{2}[A-Z0-9](?=[A-Z0-9]))/);
+      parts.forEach(function(part) {
+        part = part.trim();
+        if (part.length >= 4) {
+          var code = part.substring(0, 3);
+          var val = part.substring(3).trim();
+          if (/^[A-Z]{2}[A-Z0-9]$/.test(code) && val) {
+            map[code] = val;
+          }
+        }
+      });
+    });
+
+    // Also do a direct line parse as backup — each line starts with a 3-char code
+    lines.forEach(function(line) {
+      line = line.trim();
+      if (line.length >= 4 && /^[A-Z]{2}[A-Z0-9]/.test(line)) {
+        var code = line.substring(0, 3);
+        var val = line.substring(3).trim();
+        if (val && !map[code]) map[code] = val;
       }
     });
-    if (!data.last && !data.first) return null;
+
+    if (Object.keys(map).length === 0) return null;
+
+    var data = {};
+    // Map AAMVA codes to our field names
+    // Name fields: DCS=last, DCT or DAC=first, DAD=middle
+    // Some states use DCT for full name or split differently
+    data.last   = map['DCS'] || map['DCU'] || '';
+    data.first  = map['DAC'] || map['DCT'] || '';
+    data.middle = map['DAD'] || '';
+    // If DCT contains full name "FIRST MIDDLE LAST" format, split it
+    if (!data.last && map['DCT']) {
+      var parts2 = map['DCT'].split(/\s*,\s*/);
+      if (parts2.length >= 2) { data.last = parts2[0]; data.first = parts2[1]; }
+    }
+    data.dob     = map['DBB'] || map['DBD'] || '';
+    data.address = map['DAG'] || '';
+    data.city    = map['DAI'] || '';
+    data.state   = map['DAJ'] || '';
+    data.zip     = map['DAK'] || '';
+    data.dl_num  = map['DAQ'] || '';
+    data.height  = map['DAU'] || '';
+    data.eyes    = map['DAY'] || '';
+    data.sex     = map['DBC'] || '';
+    data.race    = map['DCL'] || '';
+    data.weight  = map['DAW'] || map['DAX'] || '';
+    data.vin     = map['DCH'] || '';
+
+    // Clean up zip — AAMVA zips are 9 digits (ZIP+4), we want just 5
+    if (data.zip) data.zip = data.zip.replace(/\D/g,'').substring(0,5);
+
+    if (!data.last && !data.first && !data.dl_num) return null;
     return data;
-  } catch(e) { return null; }
+  } catch(e) {
+    console.error('AAMVA parse error:', e);
+    return null;
+  }
 }
 
 function fillLicenseData(d) {
-  function setV(id,v){ var el=document.getElementById(id); if(el&&v){ el.value=v; } }
-  if(d.last) setV('f-def-last', d.last.toUpperCase());
-  if(d.first) setV('f-def-first', d.first.toUpperCase());
-  if(d.middle) setV('f-def-mi', d.middle.substring(0,1).toUpperCase());
-  if(d.address) setV('f-def-address', d.address.substring(0,35));
-  if(d.city) setV('f-def-city', d.city);
-  if(d.state) setV('f-def-state', d.state);
-  if(d.zip) setV('f-def-zip', d.zip.substring(0,5));
-  if(d.dl_num) setV('f-dl-num', d.dl_num);
-  if(d.state) setV('f-dl-state', d.state);
+  function setV(id,v){ var el=document.getElementById(id); if(el&&v&&v.toString().trim()){ el.value=v; } }
+  if(d.last) setV('f-def-last', d.last.replace(/,/g,'').trim().toUpperCase());
+  if(d.first) setV('f-def-first', d.first.trim().toUpperCase());
+  if(d.middle) setV('f-def-mi', d.middle.trim().substring(0,1).toUpperCase());
+  if(d.address) setV('f-def-address', d.address.trim().substring(0,35));
+  if(d.city) setV('f-def-city', d.city.trim());
+  if(d.state) setV('f-def-state', d.state.trim().toUpperCase());
+  if(d.zip) setV('f-def-zip', d.zip.replace(/\D/g,'').substring(0,5));
+  if(d.dl_num) setV('f-dl-num', d.dl_num.trim());
+  if(d.state) setV('f-dl-state', d.state.trim().toUpperCase());
   if(d.dob) {
-    // AAMVA DOB format: MMDDYYYY
+    // AAMVA DOB: MMDDYYYY or YYYYMMDD
     var dob = d.dob.replace(/\D/g,'');
-    if(dob.length===8) {
-      var yr=dob.substring(4,8), mo=dob.substring(0,2), dy=dob.substring(2,4);
+    if(dob.length === 8) {
+      var yr, mo, dy;
+      // Determine format: if first 4 digits look like a year (19xx or 20xx) = YYYYMMDD
+      if(dob.substring(0,2)==='19'||dob.substring(0,2)==='20') {
+        yr=dob.substring(0,4); mo=dob.substring(4,6); dy=dob.substring(6,8);
+      } else {
+        // MMDDYYYY
+        mo=dob.substring(0,2); dy=dob.substring(2,4); yr=dob.substring(4,8);
+      }
       setV('f-def-dob', yr+'-'+mo+'-'+dy);
     }
   }
   if(d.height) {
-    // AAMVA height often in FTI (e.g. 510 = 5'10")
-    var ht = d.height.replace(/\D/g,'');
-    if(ht.length===3) { var htStr=ht[0]+"'"+ht.substring(1)+'"'; setV('f-height', htStr); }
+    // AAMVA height formats: "510" (5'10"), "5-10", "5 10", "510 in", "170 cm"
+    var ht = d.height.replace(/[^0-9]/g,'');
+    var htStr = '';
+    if(ht.length === 3) {
+      htStr = ht[0]+"'"+ht.substring(1)+'"';
+    } else if(ht.length === 2) {
+      htStr = "5'"+ht+'"';
+    }
+    if(htStr) {
+      // Find closest match in dropdown
+      var sel = document.getElementById('f-height');
+      if(sel) {
+        for(var i=0;i<sel.options.length;i++) {
+          if(sel.options[i].value===htStr||sel.options[i].text===htStr) { sel.value=sel.options[i].value; break; }
+        }
+      }
+    }
   }
   if(d.eyes) {
-    var eyeMap={'BRN':'BRN','BLU':'BLU','GRN':'GRN','HAZ':'HAZ','GRY':'GRY','BLK':'BLK'};
+    // AAMVA eye colors: BRN, BLU, GRN, HAZ, GRY, BLK, MAR, PNK, DIC, UNK
+    var eyeMap = {'BRN':'BRN','BLU':'BLU','GRN':'GRN','HAZ':'HAZ','GRY':'GRY','BLK':'BLK','MAR':'BRN','GRY':'GRY'};
     var ey = d.eyes.toUpperCase().substring(0,3);
     if(eyeMap[ey]) setV('f-eyes', eyeMap[ey]);
   }
+  if(d.hair) {
+    var hairMap = {'BLK':'BLK','BRN':'BRN','BLN':'BLD','RED':'RED','SDY':'RED','GRY':'GRY','WHI':'WHT','BAL':'BAL'};
+    var hr = d.hair.toUpperCase().substring(0,3);
+    if(hairMap[hr]) setV('f-hair', hairMap[hr]);
+  }
   if(d.sex) {
-    setV('f-sex', d.sex==='1'||d.sex.toUpperCase()==='M'?'M':'F');
+    // AAMVA: 1=Male, 2=Female, M, F
+    var sx = d.sex.toString().trim();
+    setV('f-sex', (sx==='1'||sx.toUpperCase()==='M') ? 'M' : 'F');
+  }
+  if(d.race) {
+    var raceMap = {'W':'WHITE','B':'BLACK','H':'HISPANIC','A':'ASIAN','I':'NATIVE AM','U':'UNKNOWN'};
+    var rc = d.race.toUpperCase().trim();
+    if(raceMap[rc]) setV('f-race', raceMap[rc]);
   }
   if(d.weight) setV('f-weight', d.weight.replace(/\D/g,''));
+  if(d.vin) setV('f-vin', d.vin.trim());
 }
 
 function parseRegistration(raw) {
