@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VA Police — USDCVN Electronic Ticketing</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0a1628; --blue: #1a3a6b; --gold: #c8a84b; --gold-light: #e8c97a;
+    --red: #8b1a1a; --bg: #f4f1ea; --paper: #faf8f3; --border: #c9c3b3;
+    --text: #1a1714; --muted: #6b6256; --success: #1a5c2a; --danger: #8b1a1a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { background: var(--navy); border-bottom: 3px solid var(--gold); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .header-left { display: flex; align-items: center; gap: 1rem; }
+  .seal { width: 44px; height: 44px; border: 2px solid var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+  .header-title { color: #fff; }
+  .header-title h1 { font-family: 'Source Serif 4', serif; font-size: 1rem; font-weight: 700; letter-spacing: 0.03em; }
+  .header-title p { font-size: 0.7rem; color: var(--gold-light); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .app { display: flex; min-height: calc(100vh - 64px); }
+  .sidebar { width: 220px; background: var(--navy); padding: 1.5rem 0; flex-shrink: 0; border-right: 1px solid rgba(200,168,75,0.2); }
+  .sidebar-section { padding: 0 1rem 1.5rem; }
+  .sidebar-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gold); font-weight: 600; margin-bottom: 0.5rem; padding: 0 0.5rem; }
+  .sidebar-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.75rem; border-radius: 4px; cursor: pointer; color: #aaa; font-size: 0.82rem; transition: all 0.15s; border: 1px solid transparent; }
+  .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+  .sidebar-item.active { background: rgba(200,168,75,0.15); color: var(--gold-light); border-color: rgba(200,168,75,0.3); }
+  .sidebar-item .icon { width: 18px; text-align: center; font-size: 1rem; }
+  .main { flex: 1; overflow-y: auto; }
+
+  .view { display: none; padding: 2rem; }
+  .view.active { display: block; }
+
+  .page-header { margin-bottom: 2rem; }
+  .page-header h2 { font-family: 'Source Serif 4', serif; font-size: 1.6rem; color: var(--navy); }
+  .page-header p { color: var(--muted); font-size: 0.85rem; margin-top: 0.3rem; }
+  .breadcrumb { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; font-family: 'IBM Plex Mono', monospace; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; padding: 1.2rem; border-top: 3px solid var(--blue); }
+  .stat-card.gold { border-top-color: var(--gold); }
+  .stat-card.red { border-top-color: var(--red); }
+  .stat-card.green { border-top-color: var(--success); }
+  .stat-num { font-family: 'IBM Plex Mono', monospace; font-size: 2rem; font-weight: 500; color: var(--navy); }
+  .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 0.25rem; }
+
+  .table-card { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .table-toolbar { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .search-box { display: flex; align-items: center; gap: 0.5rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem 0.75rem; flex: 1; max-width: 300px; }
+  .search-box input { border: none; background: none; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.82rem; outline: none; width: 100%; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead { background: var(--navy); color: #fff; }
+  th { padding: 0.7rem 1rem; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+  td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(0,0,0,0.02); }
+  .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 3px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .badge-optional { background: #dbeafe; color: #1e40af; }
+  .badge-mandatory { background: #fee2e2; color: #991b1b; }
+  .btn-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .btn-sm { padding: 0.3rem 0.65rem; border-radius: 3px; border: 1px solid var(--border); background: var(--paper); cursor: pointer; font-size: 0.75rem; font-family: 'IBM Plex Sans', sans-serif; transition: all 0.15s; color: var(--text); white-space: nowrap; }
+  .btn-sm:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .btn-sm.danger:hover { background: var(--red); border-color: var(--red); }
+
+  /* OFFENSE SEARCH WIDGET */
+  .offense-widget { border: 1px solid var(--border); border-radius: 6px; background: #fff; overflow: hidden; }
+  .offense-search-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .offense-search-bar input { flex: 1; border: none; background: none; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; outline: none; }
+  .offense-search-bar .search-icon { color: var(--muted); font-size: 1rem; }
+  .offense-cats { display: flex; gap: 0.4rem; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; background: var(--paper); }
+  .cat-chip { padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.72rem; border: 1px solid var(--border); cursor: pointer; background: #fff; transition: all 0.15s; white-space: nowrap; }
+  .cat-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .offense-results { max-height: 220px; overflow-y: auto; }
+  .offense-item { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; gap: 0.75rem; }
+  .offense-item:last-child { border-bottom: none; }
+  .offense-item:hover { background: #eff6ff; }
+  .offense-item.selected { background: #dbeafe; border-left: 3px solid var(--blue); }
+  .offense-code-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--blue); font-weight: 600; white-space: nowrap; }
+  .offense-desc-text { font-size: 0.8rem; color: var(--text); flex: 1; }
+  .offense-meta { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+  .offense-amt { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; color: var(--success); font-weight: 700; }
+  .offense-mca { font-size: 0.72rem; color: var(--red); font-weight: 700; background: #fee2e2; padding: 0.15rem 0.4rem; border-radius: 3px; }
+  .offense-selected-display { padding: 0.6rem 0.85rem; background: #dbeafe; border-top: 1px solid #bfdbfe; font-size: 0.82rem; display: none; }
+  .offense-selected-display.visible { display: flex; align-items: center; justify-content: space-between; }
+  .offense-no-results { padding: 1.25rem; text-align: center; color: var(--muted); font-size: 0.82rem; }
+
+  /* FORM */
+  .form-card { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; }
+  .form-header { background: var(--navy); color: #fff; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; border-radius: 6px 6px 0 0; }
+  .form-header h3 { font-family: 'Source Serif 4', serif; font-size: 1.1rem; }
+  .form-header .ticket-num { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--gold-light); }
+  .form-body { padding: 1.5rem; }
+  .form-section { margin-bottom: 1.75rem; }
+  .form-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--blue); font-weight: 700; border-bottom: 2px solid var(--blue); padding-bottom: 0.4rem; margin-bottom: 1rem; }
+  .form-grid { display: grid; gap: 0.9rem; }
+  .form-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-grid.cols-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+  .form-grid.cols-6 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .field label { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .field input, .field select, .field textarea { border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem 0.65rem; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.82rem; background: #fff; color: var(--text); outline: none; transition: border-color 0.15s; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26,58,107,0.1); }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .field-hint { font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+
+  .appearance-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+  .appearance-option { border: 2px solid var(--border); border-radius: 6px; padding: 1rem; cursor: pointer; transition: all 0.2s; position: relative; }
+  .appearance-option:hover { border-color: var(--blue); }
+  .appearance-option.selected-optional { border-color: #1e40af; background: #eff6ff; }
+  .appearance-option.selected-mandatory { border-color: var(--red); background: #fff5f5; }
+  .appearance-option input[type=radio] { position: absolute; opacity: 0; }
+  .appearance-option .opt-label { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; }
+  .appearance-option .opt-desc { font-size: 0.75rem; color: var(--muted); }
+  .box-a { color: var(--red); }
+  .box-b { color: #1e40af; }
+
+  .forfeiture-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; align-items: end; }
+  .forfeiture-total { background: var(--navy); color: #fff; padding: 0.75rem 1rem; border-radius: 6px; text-align: center; }
+  .forfeiture-total .amount { font-family: 'IBM Plex Mono', monospace; font-size: 1.4rem; color: var(--gold-light); }
+  .forfeiture-total .label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .prob-cause-area { border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+  .prob-cause-area textarea { border: none; outline: none; width: 100%; font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; resize: vertical; min-height: 120px; line-height: 1.6; color: var(--text); background: transparent; padding: 0.75rem; }
+  .prob-cause-basis { display: flex; gap: 1rem; flex-wrap: wrap; padding: 0.75rem; border-top: 1px solid var(--border); }
+  .prob-cause-basis label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; cursor: pointer; }
+
+  .check-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .check-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; cursor: pointer; }
+  .check-item input[type=checkbox] { accent-color: var(--navy); width: 15px; height: 15px; }
+
+  .form-actions { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; align-items: center; background: var(--bg); border-radius: 0 0 6px 6px; flex-wrap: wrap; }
+  .btn { padding: 0.6rem 1.4rem; border-radius: 4px; font-size: 0.85rem; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; letter-spacing: 0.02em; }
+  .btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .btn-primary:hover { background: var(--blue); }
+  .btn-gold { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-outline { background: transparent; color: var(--navy); border-color: var(--border); }
+  .btn-outline:hover { border-color: var(--navy); }
+
+  /* VIOLATION CODES PAGE */
+  .code-page-search { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+  .code-page-search input { flex: 1; border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.9rem; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; outline: none; }
+  .code-page-search input:focus { border-color: var(--blue); }
+  .code-filter { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .filter-chip { padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.75rem; border: 1px solid var(--border); cursor: pointer; background: var(--paper); transition: all 0.15s; }
+  .filter-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .code-results { display: grid; gap: 0.5rem; }
+  .code-card { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; padding: 0.85rem 1rem; display: flex; align-items: center; justify-content: space-between; transition: border-color 0.15s; cursor: pointer; gap: 1rem; }
+  .code-card:hover { border-color: var(--blue); background: #f0f6ff; }
+  .code-id { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--blue); font-weight: 600; }
+  .code-cat-tag { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.15rem; }
+  .code-desc { font-size: 0.82rem; color: var(--text); margin-top: 0.15rem; }
+  .code-meta { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+  .code-amount { font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; color: var(--success); font-weight: 600; }
+  .code-mca-badge { font-size: 0.7rem; color: var(--red); font-weight: 700; background: #fee2e2; padding: 0.2rem 0.5rem; border-radius: 3px; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--paper); border-radius: 8px; width: 90%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.4); border: 1px solid var(--border); }
+  .modal-header { background: var(--navy); color: #fff; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; border-radius: 8px 8px 0 0; }
+  .modal-header h3 { font-family: 'Source Serif 4', serif; font-size: 1rem; }
+  .modal-close { background: none; border: none; color: #aaa; font-size: 1.5rem; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: #fff; }
+  .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+  .xml-output { background: #0d1117; color: #79c0ff; font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; padding: 1.25rem; border-radius: 6px; white-space: pre; overflow-x: auto; line-height: 1.7; }
+  .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--bg); border-radius: 0 0 8px 8px; }
+
+  /* PRINT */
+  .print-notice { background: #fff; border: 2px solid var(--navy); max-width: 680px; margin: 0 auto; font-size: 0.78rem; font-family: 'IBM Plex Sans', sans-serif; color: #000; }
+  .print-header { background: var(--navy); color: #fff; padding: 0.6rem 1rem; display: flex; align-items: center; justify-content: space-between; }
+  .print-header h2 { font-family: 'Source Serif 4', serif; font-size: 1rem; }
+  .print-loc-code { border: 1px solid rgba(255,255,255,0.4); padding: 0.25rem 0.75rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; }
+  .print-row { display: flex; border-bottom: 1px solid #ccc; }
+  .print-cell { padding: 0.35rem 0.6rem; flex: 1; }
+  .print-cell-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.07em; color: #666; display: block; }
+  .print-cell-val { font-weight: 600; font-size: 0.82rem; }
+  .print-charge-box { border: 2px solid #000; margin: 0.5rem; padding: 0.5rem; }
+  .print-charge-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid #000; padding-bottom: 0.3rem; margin-bottom: 0.4rem; font-weight: 700; }
+  .print-appearance { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #ccc; margin-top: 0.5rem; }
+  .print-box { padding: 0.5rem 0.6rem; }
+  .print-box-a { border-right: 1px solid #ccc; }
+  .print-box-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.3rem; }
+  .print-amount { font-family: 'IBM Plex Mono', monospace; font-size: 1rem; font-weight: 700; }
+  .print-sig-area { padding: 0.5rem 0.6rem; border-top: 1px solid #ccc; font-size: 0.7rem; }
+
+  #toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--navy); color: #fff; padding: 0.75rem 1.25rem; border-radius: 6px; font-size: 0.82rem; border-left: 4px solid var(--gold); transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 2000; max-width: 320px; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid.cols-3,.form-grid.cols-4,.form-grid.cols-5,.form-grid.cols-6 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .sidebar { display: none; }
+    .form-grid.cols-2,.form-grid.cols-3,.form-grid.cols-4,.form-grid.cols-5,.form-grid.cols-6 { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .btn-scan {
+    background: var(--blue); color: #fff; border: none; border-radius: 4px;
+    padding: 0.3rem 0.75rem; font-size: 0.75rem; font-family: 'IBM Plex Sans', sans-serif;
+    cursor: pointer; font-weight: 600; transition: background 0.15s;
+  }
+  .btn-scan:hover { background: var(--navy); }
+  .submitted-badge {
+    display: inline-block; background: var(--success); color: #fff;
+    font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem;
+    border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; margin-left: 0.75rem;
+  }
+  @media print {
+    header, .sidebar, .form-actions, .page-header, .btn, #toast,
+    .table-toolbar, .modal-overlay, #view-dashboard, #view-new-ticket,
+    #view-saved, #view-codes, #view-xml-export { display: none !important; }
+    body, .app, .main { background: #fff !important; }
+    .app { display: block; }
+    .main { overflow: visible; }
+    #view-print { display: block !important; padding: 0 !important; }
+    #view-print .page-header, #view-print .btn { display: none !important; }
+    .print-notice { border: none !important; max-width: 100% !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="seal">⚖️</div>
+    <div class="header-title">
+      <h1>U.S. District Court Violation Notice System</h1>
+      <p>Department of Veterans Affairs Police — CVB Electronic Ticketing</p>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <div class="sidebar-item active" onclick="showView('dashboard',this)"><span class="icon">📋</span> Dashboard</div>
+      <div class="sidebar-item" onclick="newTicket();showView('new-ticket',this)"><span class="icon">✍️</span> New Ticket</div>
+      <div class="sidebar-item" onclick="showView('saved',this)"><span class="icon">🗂️</span> Saved Notices</div>
+      <div class="sidebar-item" onclick="showView('codes',this)"><span class="icon">📖</span> Violation Codes</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tools</div>
+      <div class="sidebar-item" onclick="showView('xml-export',this)"><span class="icon">📤</span> XML Export</div>
+      <div class="sidebar-item" onclick="showView('print',this)"><span class="icon">🖨️</span> Print Preview</div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view active">
+      <div class="page-header">
+        <div class="breadcrumb">VA Police // CVB e-Ticketing</div>
+        <h2>Dashboard</h2>
+        <p>Electronic Violation Notice Management System</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total Notices</div></div>
+        <div class="stat-card gold"><div class="stat-num" id="stat-draft">0</div><div class="stat-label">Drafts</div></div>
+        <div class="stat-card red"><div class="stat-num" id="stat-mandatory">0</div><div class="stat-label">Mandatory Appearance</div></div>
+        <div class="stat-card green"><div class="stat-num" id="stat-optional">0</div><div class="stat-label">Optional Appearance</div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-toolbar">
+          <strong style="font-size:0.9rem;">Recent Violation Notices</strong>
+          <button class="btn btn-primary" onclick="newTicket()">+ New Ticket</button>
+        </div>
+        <table>
+          <thead><tr><th>Violation #</th><th>Defendant</th><th>Offense</th><th>Date Issued</th><th>Type</th><th>Amount</th><th>Actions</th></tr></thead>
+          <tbody id="dashboard-table"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">No tickets yet. Click "New Ticket" to begin.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- NEW TICKET FORM -->
+    <div id="view-new-ticket" class="view">
+      <div class="page-header">
+        <div class="breadcrumb">VA Police // CVB e-Ticketing // New Notice</div>
+        <h2>Issue Violation Notice</h2>
+        <p>Required fields marked <span style="color:var(--red)">*</span></p>
+      </div>
+      <div class="form-card">
+        <div class="form-header">
+          <h3>United States District Court — Violation Notice</h3>
+          <span class="ticket-num" id="ticket-num-display">—</span>
+        </div>
+        <div class="form-body">
+
+          <!-- OFFICER & LOCATION -->
+          <div class="form-section">
+            <div class="form-section-title">Officer &amp; Location Information</div>
+            <div class="form-grid cols-4">
+              <div class="field">
+                <label>CVB Location Code <span class="req">*</span></label>
+                <select id="f-location-code" onchange="updateTicketNum()">
+                  <option value="">— Select Location —</option>
+                  <option value="KW50" selected>KW50 — Louisville VAMC (Robley Rex)</option>
+                  <option value="" disabled>─────────────────</option>
+                  <option value="OTHER">Other VA Facility (contact CVB)</option>
+                </select>
+                <div class="field-hint">Contact CVB at 800-827-2982 for your facility's code</div>
+              </div>
+              <div class="field">
+                <label>Violation Number</label>
+                <input type="text" id="f-violation-number" readonly style="background:#f0f0f0;font-family:'IBM Plex Mono',monospace">
+              </div>
+              <div class="field">
+                <label>Officer Name (Last Only) <span class="req">*</span></label>
+                <input type="text" id="f-officer-name" placeholder="SMITH">
+              </div>
+              <div class="field">
+                <label>Officer Number <span class="req">*</span></label>
+                <input type="text" id="f-officer-number" placeholder="1234">
+              </div>
+            </div>
+          </div>
+
+          <!-- OFFENSE -->
+          <div class="form-section">
+            <div class="form-section-title">Offense Information</div>
+            <div class="form-grid cols-2" style="margin-bottom:0.9rem">
+              <div class="field">
+                <label>Date &amp; Time of Offense <span class="req">*</span></label>
+                <input type="datetime-local" id="f-issue-datetime">
+              </div>
+              <div class="field">
+                <label>Place of Offense <span class="req">*</span></label>
+                <input type="text" id="f-offense-location" placeholder="e.g. Parking Lot C, Building 1 entrance" maxlength="55">
+                <div class="field-hint">Max 55 characters</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:0.9rem">
+              <label>Violation Code Search <span class="req">*</span></label>
+              <div class="offense-widget">
+                <div class="offense-search-bar">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" id="offense-search-input" placeholder="Type a keyword or code number (e.g. 'speed', 'parking', 'weapon', '1.218')" oninput="filterOffenses()">
+                </div>
+                <div class="offense-cats" id="offense-cats"></div>
+                <div class="offense-results" id="offense-results"></div>
+                <div class="offense-selected-display" id="offense-selected-display">
+                  <span id="offense-selected-text">—</span>
+                  <button class="btn-sm" onclick="clearOffenseSelection()" style="font-size:0.72rem">✕ Clear</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-grid cols-2">
+              <div class="field">
+                <label>Offense Description / Factual Basis <span class="req">*</span></label>
+                <input type="text" id="f-offense-description" placeholder="Auto-filled from code, or enter manually">
+              </div>
+              <div class="field">
+                <label>Offense Statute <span class="req">*</span></label>
+                <input type="text" id="f-offense-statute" placeholder="Auto-filled from code, or enter manually">
+              </div>
+            </div>
+            <div class="form-grid cols-4" style="margin-top:0.9rem">
+              <div class="field">
+                <label>Offense Code Type <span class="req">*</span></label>
+                <select id="f-offense-code">
+                  <option value="CFR">CFR</option>
+                  <option value="USC">USC</option>
+                  <option value="State Code">State Code</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Actual Speed (MPH)</label>
+                <input type="number" id="f-actual-speed" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Posted Speed (MPH)</label>
+                <input type="number" id="f-posted-speed" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Indicators</label>
+                <div class="check-row" style="margin-top:0.35rem">
+                  <label class="check-item"><input type="checkbox" id="f-hazmat"> HAZMAT</label>
+                  <label class="check-item"><input type="checkbox" id="f-cdl"> CDL</label>
+                  <label class="check-item"><input type="checkbox" id="f-cmv"> CMV</label>
+                  <label class="check-item"><input type="checkbox" id="f-pass"> PASS</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DEFENDANT -->
+          <div class="form-section">
+            <div class="form-section-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Defendant Information</span>
+              <button class="btn-scan" onclick="startLicenseScan()" title="Click then scan barcode on back of license">📷 Scan License</button>
+            </div>
+            <div id="scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;display:none;align-items:center;justify-content:space-between">
+              <span id="scan-status-text">⏳ Ready to scan — scan the barcode on the back of the license...</span>
+              <button class="btn-sm" onclick="cancelScan('license')" style="font-size:0.72rem;margin-left:0.5rem">✕ Cancel</button>
+            </div>
+            <div class="form-grid cols-4">
+              <div class="field" style="grid-column:span 2">
+                <label>Last Name <span class="req">*</span></label>
+                <input type="text" id="f-def-last" placeholder="LAST NAME">
+              </div>
+              <div class="field">
+                <label>First Name <span class="req">*</span></label>
+                <input type="text" id="f-def-first" placeholder="FIRST NAME">
+              </div>
+              <div class="field">
+                <label>M.I.</label>
+                <input type="text" id="f-def-mi" placeholder="A" maxlength="1">
+              </div>
+            </div>
+            <div class="form-grid cols-4" style="margin-top:0.9rem">
+              <div class="field" style="grid-column:span 2">
+                <label>Street Address <span class="req">*</span></label>
+                <input type="text" id="f-def-address" placeholder="123 Main St Apt 4B" maxlength="35">
+                <div class="field-hint">Max 35 characters</div>
+              </div>
+              <div class="field">
+                <label>Phone</label>
+                <input type="text" id="f-def-phone" placeholder="555-867-5309">
+              </div>
+              <div class="field">
+                <label>Date of Birth <span class="req">*</span></label>
+                <input type="date" id="f-def-dob">
+              </div>
+            </div>
+            <div class="form-grid cols-4" style="margin-top:0.9rem">
+              <div class="field">
+                <label>City <span class="req">*</span></label>
+                <input type="text" id="f-def-city" placeholder="Louisville">
+              </div>
+              <div class="field">
+                <label>State <span class="req">*</span></label>
+                <select id="f-def-state"></select>
+              </div>
+              <div class="field">
+                <label>ZIP <span class="req">*</span></label>
+                <input type="text" id="f-def-zip" placeholder="40206" maxlength="10">
+              </div>
+              <div class="field">
+                <label>Age Category</label>
+                <div class="check-row" style="margin-top:0.35rem">
+                  <label class="check-item"><input type="radio" name="age-type" value="Adult" id="f-adult" checked> Adult</label>
+                  <label class="check-item"><input type="radio" name="age-type" value="Juvenile" id="f-juvenile"> Juvenile</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-grid cols-4" style="margin-top:0.9rem">
+              <div class="field">
+                <label>Driver's License # <span class="req">*</span></label>
+                <input type="text" id="f-dl-num" placeholder="DL Number">
+              </div>
+              <div class="field">
+                <label>DL State</label>
+                <select id="f-dl-state"></select>
+              </div>
+              <div class="field">
+                <label>SSN</label>
+                <input type="text" id="f-ssn" placeholder="NNN-NN-NNNN" maxlength="11">
+              </div>
+              <div class="field">
+                <label>Sex</label>
+                <select id="f-sex">
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid cols-5" style="margin-top:0.9rem">
+              <div class="field">
+                <label>Race</label>
+                <select id="f-race">
+                  <option value="">— Select —</option>
+                  <option value="WHITE">White</option>
+                  <option value="BLACK">Black / African American</option>
+                  <option value="HISPANIC">Hispanic / Latino</option>
+                  <option value="ASIAN">Asian</option>
+                  <option value="NATIVE AM">American Indian / Alaska Native</option>
+                  <option value="PAC ISL">Native Hawaiian / Pacific Islander</option>
+                  <option value="MULTI">Two or More Races</option>
+                  <option value="OTHER">Other</option>
+                  <option value="UNKNOWN">Unknown</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Hair Color</label>
+                <select id="f-hair">
+                  <option value="">— Select —</option>
+                  <option value="BLK">Black</option>
+                  <option value="BRN">Brown</option>
+                  <option value="BLD">Blonde</option>
+                  <option value="RED">Red / Auburn</option>
+                  <option value="GRY">Gray</option>
+                  <option value="WHT">White</option>
+                  <option value="BAL">Bald / Shaved</option>
+                  <option value="OTH">Other</option>
+                  <option value="UNK">Unknown</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Eye Color</label>
+                <select id="f-eyes">
+                  <option value="">— Select —</option>
+                  <option value="BRN">Brown</option>
+                  <option value="BLU">Blue</option>
+                  <option value="GRN">Green</option>
+                  <option value="HAZ">Hazel</option>
+                  <option value="GRY">Gray</option>
+                  <option value="BLK">Black</option>
+                  <option value="OTH">Other</option>
+                  <option value="UNK">Unknown</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Height</label>
+                <select id="f-height">
+                  <option value="">— Select —</option>
+                  <option>4'0"</option><option>4'6"</option>
+                  <option>5'0"</option><option>5'1"</option><option>5'2"</option><option>5'3"</option>
+                  <option>5'4"</option><option>5'5"</option><option>5'6"</option><option>5'7"</option>
+                  <option>5'8"</option><option>5'9"</option><option>5'10"</option><option>5'11"</option>
+                  <option>6'0"</option><option>6'1"</option><option>6'2"</option><option>6'3"</option>
+                  <option>6'4"</option><option>6'5"</option><option>6'6"</option><option>6'7"</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Weight (lbs)</label>
+                <input type="number" id="f-weight" placeholder="180" min="50" max="600">
+              </div>
+            </div>
+          </div>
+
+          <!-- VEHICLE -->
+          <div class="form-section">
+            <div class="form-section-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Vehicle Information (if applicable)</span>
+              <button class="btn-scan" onclick="startRegScan()" title="Click then scan vehicle registration barcode">📷 Scan Registration</button>
+            </div>
+            <div id="reg-scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;display:none;align-items:center;justify-content:space-between">
+              <span id="reg-scan-status-text">⏳ Ready to scan — scan the barcode on the vehicle registration...</span>
+              <button class="btn-sm" onclick="cancelScan('registration')" style="font-size:0.72rem;margin-left:0.5rem">✕ Cancel</button>
+            </div>
+            <div class="form-grid cols-5">
+              <div class="field">
+                <label>Tag / Plate #</label>
+                <input type="text" id="f-tag-no" placeholder="ABC-1234">
+              </div>
+              <div class="field">
+                <label>Tag State</label>
+                <select id="f-tag-st"></select>
+              </div>
+              <div class="field">
+                <label>Year</label>
+                <select id="f-veh-year"></select>
+              </div>
+              <div class="field">
+                <label>Make</label>
+                <select id="f-veh-make">
+                  <option value="">— Select —</option>
+                  <option>Acura</option><option>Alfa Romeo</option><option>Audi</option>
+                  <option>BMW</option><option>Buick</option><option>Cadillac</option>
+                  <option>Chevrolet</option><option>Chrysler</option><option>Dodge</option>
+                  <option>Ford</option><option>Genesis</option><option>GMC</option>
+                  <option>Honda</option><option>Hyundai</option><option>Infiniti</option>
+                  <option>Jaguar</option><option>Jeep</option><option>Kia</option>
+                  <option>Land Rover</option><option>Lexus</option><option>Lincoln</option>
+                  <option>Maserati</option><option>Mazda</option><option>Mercedes-Benz</option>
+                  <option>MINI</option><option>Mitsubishi</option><option>Nissan</option>
+                  <option>Porsche</option><option>Ram</option><option>Subaru</option>
+                  <option>Tesla</option><option>Toyota</option><option>Volkswagen</option>
+                  <option>Volvo</option><option>Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Color</label>
+                <select id="f-veh-color">
+                  <option value="">— Select —</option>
+                  <option value="BLK">Black</option>
+                  <option value="WHT">White</option>
+                  <option value="SIL">Silver / Gray</option>
+                  <option value="RED">Red</option>
+                  <option value="BLU">Blue</option>
+                  <option value="GRN">Green</option>
+                  <option value="GLD">Gold / Tan / Beige</option>
+                  <option value="BRN">Brown / Maroon</option>
+                  <option value="ORG">Orange</option>
+                  <option value="YEL">Yellow</option>
+                  <option value="PRP">Purple</option>
+                  <option value="OTH">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid cols-3" style="margin-top:0.9rem">
+              <div class="field" style="grid-column:span 2">
+                <label>VIN</label>
+                <input type="text" id="f-vin" placeholder="17-character VIN" maxlength="17">
+              </div>
+              <div class="field">
+                <label>Model</label>
+                <input type="text" id="f-veh-model" placeholder="F-150, Camry, etc.">
+              </div>
+            </div>
+          </div>
+
+          <!-- APPEARANCE -->
+          <div class="form-section">
+            <div class="form-section-title">Appearance &amp; Forfeiture</div>
+            <div class="appearance-selector">
+              <label class="appearance-option" id="opt-box-b" onclick="setAppearance('O')">
+                <input type="radio" name="hrg-type" value="O">
+                <div class="opt-label box-b">☐ Box B — Optional Appearance</div>
+                <div class="opt-desc">Defendant may pay collateral or appear in court.</div>
+              </label>
+              <label class="appearance-option" id="opt-box-a" onclick="setAppearance('M')">
+                <input type="radio" name="hrg-type" value="M">
+                <div class="opt-label box-a">☐ Box A — Mandatory Appearance</div>
+                <div class="opt-desc">Defendant MUST appear in court. No collateral option.</div>
+              </label>
+            </div>
+            <div class="forfeiture-box" id="forfeiture-section">
+              <div class="field">
+                <label>Forfeiture Amount ($)</label>
+                <input type="number" id="f-forfeiture" placeholder="0.00" step="0.01" oninput="calcTotal()">
+              </div>
+              <div class="field">
+                <label>Processing Fee</label>
+                <input type="text" value="$30.00" readonly style="background:#f0f0f0">
+              </div>
+              <div class="forfeiture-total">
+                <div class="amount" id="total-display">$30.00</div>
+                <div class="label">Total Collateral Due</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COURT DATE -->
+          <div class="form-section">
+            <div class="form-section-title">Court Date (only if authorized to schedule)</div>
+            <div class="form-grid cols-3">
+              <div class="field" style="grid-column:span 2">
+                <label>Court Address</label>
+                <input type="text" id="f-court-address" placeholder="Leave blank unless scheduling a court date">
+              </div>
+              <div class="field">
+                <label>Court Date &amp; Time</label>
+                <input type="datetime-local" id="f-hrg-datetime">
+              </div>
+            </div>
+          </div>
+
+          <!-- PROBABLE CAUSE -->
+          <div class="form-section">
+            <div class="form-section-title">Statement of Probable Cause</div>
+            <div class="form-grid cols-2" style="margin-bottom:0.75rem">
+              <div class="field">
+                <label>District</label>
+                <select id="f-district">
+                  <option value="">— Select District —</option>
+                  <option value="KYW">Western District of Kentucky (KYW) — Louisville</option>
+                  <option value="KYE">Eastern District of Kentucky (KYE)</option>
+                  <option value="" disabled>─────────────────</option>
+                  <option value="AK">District of Alaska (AK)</option>
+                  <option value="ALM">Middle District of Alabama (ALM)</option>
+                  <option value="ALN">Northern District of Alabama (ALN)</option>
+                  <option value="ALS">Southern District of Alabama (ALS)</option>
+                  <option value="ARE">Eastern District of Arkansas (ARE)</option>
+                  <option value="ARW">Western District of Arkansas (ARW)</option>
+                  <option value="AZ">District of Arizona (AZ)</option>
+                  <option value="CAC">Central District of California (CAC)</option>
+                  <option value="CAE">Eastern District of California (CAE)</option>
+                  <option value="CANO">Northern District of California (CANO)</option>
+                  <option value="CAS">Southern District of California (CAS)</option>
+                  <option value="CO">District of Colorado (CO)</option>
+                  <option value="CT">District of Connecticut (CT)</option>
+                  <option value="DC">District of Columbia (DC)</option>
+                  <option value="DE">District of Delaware (DE)</option>
+                  <option value="FLM">Middle District of Florida (FLM)</option>
+                  <option value="FLN">Northern District of Florida (FLN)</option>
+                  <option value="FLS">Southern District of Florida (FLS)</option>
+                  <option value="GAM">Middle District of Georgia (GAM)</option>
+                  <option value="GAN">Northern District of Georgia (GAN)</option>
+                  <option value="GAS">Southern District of Georgia (GAS)</option>
+                  <option value="GU">District of Guam (GU)</option>
+                  <option value="HI">District of Hawaii (HI)</option>
+                  <option value="IAN">Northern District of Iowa (IAN)</option>
+                  <option value="IAS">Southern District of Iowa (IAS)</option>
+                  <option value="ID">District of Idaho (ID)</option>
+                  <option value="ILC">Central District of Illinois (ILC)</option>
+                  <option value="ILE">Eastern District of Illinois (ILE)</option>
+                  <option value="ILN">Northern District of Illinois (ILN)</option>
+                  <option value="ILS">Southern District of Illinois (ILS)</option>
+                  <option value="INN">Northern District of Indiana (INN)</option>
+                  <option value="INS">Southern District of Indiana (INS)</option>
+                  <option value="KS">District of Kansas (KS)</option>
+                  <option value="LAE">Eastern District of Louisiana (LAE)</option>
+                  <option value="LAM">Middle District of Louisiana (LAM)</option>
+                  <option value="LAW">Western District of Louisiana (LAW)</option>
+                  <option value="MA">District of Massachusetts (MA)</option>
+                  <option value="MD">District of Maryland (MD)</option>
+                  <option value="ME">District of Maine (ME)</option>
+                  <option value="MIE">Eastern District of Michigan (MIE)</option>
+                  <option value="MIW">Western District of Michigan (MIW)</option>
+                  <option value="MN">District of Minnesota (MN)</option>
+                  <option value="MOE">Eastern District of Missouri (MOE)</option>
+                  <option value="MOW">Western District of Missouri (MOW)</option>
+                  <option value="MSN">Northern District of Mississippi (MSN)</option>
+                  <option value="MSS">Southern District of Mississippi (MSS)</option>
+                  <option value="MT">District of Montana (MT)</option>
+                  <option value="NCE">Eastern District of North Carolina (NCE)</option>
+                  <option value="NCM">Middle District of North Carolina (NCM)</option>
+                  <option value="NCW">Western District of North Carolina (NCW)</option>
+                  <option value="ND">District of North Dakota (ND)</option>
+                  <option value="NE">District of Nebraska (NE)</option>
+                  <option value="NH">District of New Hampshire (NH)</option>
+                  <option value="NJ">District of New Jersey (NJ)</option>
+                  <option value="NM">District of New Mexico (NM)</option>
+                  <option value="NMI">District of Northern Mariana Islands (NMI)</option>
+                  <option value="NV">District of Nevada (NV)</option>
+                  <option value="NYE">Eastern District of New York (NYE)</option>
+                  <option value="NYN">Northern District of New York (NYN)</option>
+                  <option value="NYS">Southern District of New York (NYS)</option>
+                  <option value="NYW">Western District of New York (NYW)</option>
+                  <option value="OHN">Northern District of Ohio (OHN)</option>
+                  <option value="OHS">Southern District of Ohio (OHS)</option>
+                  <option value="OKE">Eastern District of Oklahoma (OKE)</option>
+                  <option value="OKN">Northern District of Oklahoma (OKN)</option>
+                  <option value="OKW">Western District of Oklahoma (OKW)</option>
+                  <option value="OR">District of Oregon (OR)</option>
+                  <option value="PAE">Eastern District of Pennsylvania (PAE)</option>
+                  <option value="PAM">Middle District of Pennsylvania (PAM)</option>
+                  <option value="PAW">Western District of Pennsylvania (PAW)</option>
+                  <option value="PR">District of Puerto Rico (PR)</option>
+                  <option value="RI">District of Rhode Island (RI)</option>
+                  <option value="SC">District of South Carolina (SC)</option>
+                  <option value="SD">District of South Dakota (SD)</option>
+                  <option value="TNE">Eastern District of Tennessee (TNE)</option>
+                  <option value="TNM">Middle District of Tennessee (TNM)</option>
+                  <option value="TNW">Western District of Tennessee (TNW)</option>
+                  <option value="TXE">Eastern District of Texas (TXE)</option>
+                  <option value="TXN">Northern District of Texas (TXN)</option>
+                  <option value="TXS">Southern District of Texas (TXS)</option>
+                  <option value="TXW">Western District of Texas (TXW)</option>
+                  <option value="UT">District of Utah (UT)</option>
+                  <option value="VAE">Eastern District of Virginia (VAE)</option>
+                  <option value="VAW">Western District of Virginia (VAW)</option>
+                  <option value="VI">District of Virgin Islands (VI)</option>
+                  <option value="VT">District of Vermont (VT)</option>
+                  <option value="WAE">Eastern District of Washington (WAE)</option>
+                  <option value="WAW">Western District of Washington (WAW)</option>
+                  <option value="WIE">Eastern District of Wisconsin (WIE)</option>
+                  <option value="WIW">Western District of Wisconsin (WIW)</option>
+                  <option value="WVN">Northern District of West Virginia (WVN)</option>
+                  <option value="WVS">Southern District of West Virginia (WVS)</option>
+                  <option value="WY">District of Wyoming (WY)</option>
+                </select>
+              </div>
+            </div>
+            <div class="prob-cause-area">
+              <textarea id="f-probable-cause" placeholder="I state that on [date] while exercising my duties as a law enforcement officer in the ___ District of ___...&#10;&#10;Describe the factual basis for this citation in detail."></textarea>
+              <div class="prob-cause-basis">
+                <strong style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;margin-right:0.5rem">Based upon:</strong>
+                <label><input type="checkbox" id="pc-personal-obs"> My personal observation</label>
+                <label><input type="checkbox" id="pc-personal-inv"> My personal investigation</label>
+                <label><input type="checkbox" id="pc-fellow"> Fellow officer's observation</label>
+                <label><input type="checkbox" id="pc-supplied"> Information supplied to me</label>
+                <label><input type="checkbox" id="pc-other"> Other</label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="btn-submit" onclick="submitTicket()">✅ Submit Ticket</button>
+          <button class="btn btn-gold" id="btn-print-def" onclick="printDefendantCopy()" disabled style="opacity:0.4;cursor:not-allowed">🖨️ Print Defendant Copy</button>
+          <button class="btn btn-outline" id="btn-new-same" onclick="newCitationSameDefendant()" style="display:none">👤 New Citation — Same Defendant</button>
+          <button class="btn btn-outline" onclick="exportXML()">📤 Export XML</button>
+          <button class="btn btn-outline" id="btn-clear" onclick="clearForm()">🗑️ Clear Form</button>
+          <span style="flex:1"></span>
+          <span style="font-size:0.75rem;color:var(--muted)" id="submit-status">Data stored locally in your browser</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVED -->
+    <div id="view-saved" class="view">
+      <div class="page-header">
+        <div class="breadcrumb">VA Police // CVB e-Ticketing // Saved Notices</div>
+        <h2>Saved Violation Notices</h2>
+      </div>
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" id="saved-search" placeholder="Search defendant, violation #, statute..." oninput="refreshSaved()"></div>
+          <button class="btn btn-primary" onclick="newTicket()">+ New Ticket</button>
+        </div>
+        <table>
+          <thead><tr><th>Violation #</th><th>Defendant</th><th>Statute</th><th>Date Issued</th><th>Type</th><th>Total Due</th><th>Actions</th></tr></thead>
+          <tbody id="saved-table"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">No saved notices.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CODES -->
+    <div id="view-codes" class="view">
+      <div class="page-header">
+        <div class="breadcrumb">VA Police // CVB e-Ticketing // Violation Codes</div>
+        <h2>38 CFR 1.218 — VA Violation Code Reference</h2>
+        <p>Official VA Police bail/forfeiture schedule. Click any code to use it in the current ticket form.</p>
+      </div>
+      <div class="code-page-search">
+        <input type="text" id="code-search-input" placeholder="Search codes or descriptions..." oninput="renderCodePage()">
+      </div>
+      <div class="code-filter" id="code-page-cats"></div>
+      <div class="code-results" id="code-results"></div>
+    </div>
+
+    <!-- XML EXPORT -->
+    <div id="view-xml-export" class="view">
+      <div class="page-header">
+        <div class="breadcrumb">VA Police // CVB e-Ticketing // XML Export</div>
+        <h2>CVB XML Export</h2>
+        <p>Select notices and generate CVB-formatted XML for batch submission</p>
+      </div>
+      <div class="table-card" style="margin-bottom:1.5rem">
+        <div class="table-toolbar">
+          <strong>Select notices to export</strong>
+          <button class="btn btn-gold" onclick="generateBatchXML()">Generate Batch XML</button>
+        </div>
+        <table>
+          <thead><tr><th><input type="checkbox" id="select-all-xml" onchange="toggleAllExport(this)"></th><th>Violation #</th><th>Defendant</th><th>Date</th><th>Statute</th></tr></thead>
+          <tbody id="export-table"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem;">No saved notices to export.</td></tr></tbody>
+        </table>
+      </div>
+      <div id="xml-result" style="display:none">
+        <div class="table-card">
+          <div class="table-toolbar"><strong>Generated XML</strong><button class="btn btn-outline" onclick="copyXML()">📋 Copy</button></div>
+          <div style="padding:1rem"><div class="xml-output" id="xml-output-text"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRINT -->
+    <div id="view-print" class="view">
+      <div class="page-header">
+        <div class="breadcrumb">VA Police // CVB e-Ticketing // Print Preview</div>
+        <h2>Print Preview — Defendant Copy</h2>
+      </div>
+      <div style="margin-bottom:1rem;display:flex;gap:0.75rem">
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Print</button>
+        <button class="btn btn-outline" onclick="showView('new-ticket',null)">← Back to Form</button>
+      </div>
+      <div class="print-notice" id="print-area"><div style="text-align:center;padding:2rem;color:var(--muted)">Fill out a ticket form first, then use Print Preview.</div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- XML MODAL -->
+<div class="modal-overlay" id="xml-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>CVB XML — Single Ticket Export</h3>
+      <button class="modal-close" onclick="document.getElementById('xml-modal').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body"><p style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem;">Copy this XML into your submission zip file per CVB specs.</p><div class="xml-output" id="xml-modal-content"></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('xml-modal').classList.remove('open')">Close</button>
+      <button class="btn btn-gold" onclick="copyModalXML()">📋 Copy XML</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ===== DATA =====
+let tickets = JSON.parse(localStorage.getItem('cvb-tickets') || '[]');
+let currentAppearance = 'O';
+let editingIndex = -1;
+let selectedOffense = null;
+let codePageCatFilter = 'All';
+
+const STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC','PR','VI','GU','AS','MP'];
+
+// Complete 38 CFR 1.218 VA Violation Code List
+const VA_CODES = [
+  // General Conduct
+  { code:'38 CFR 1.218(a)(3) / (b)(1)', sub:'b1',  cat:'Property',  type:'CFR', desc:'Improper disposal of rubbish on property', amount:200 },
+  { code:'38 CFR 1.218(b)(2)',           sub:'b2',  cat:'Property',  type:'CFR', desc:'Spitting on property', amount:25 },
+  { code:'38 CFR 1.218(b)(3)',           sub:'b3',  cat:'Property',  type:'CFR', desc:'Throwing articles from a building or unauthorized climbing on any part of a building', amount:50 },
+  { code:'38 CFR 1.218(b)(4)',           sub:'b4',  cat:'Property',  type:'CFR', desc:'Willful destruction, damage, or removal of government property without authorization', amount:500 },
+  { code:'38 CFR 1.218(b)(5)',           sub:'b5',  cat:'Property',  type:'CFR', desc:'Defacement, destruction, mutilation, injury to, or removal or disturbance of a grave marker or headstone', amount:500 },
+  // Signs
+  { code:'38 CFR 1.218(a)(4) / (b)(6)', sub:'b6',  cat:'Signs',     type:'CFR', desc:'Failure to comply with signs of a directive and restrictive nature posted for safety purposes', amount:50 },
+  { code:'38 CFR 1.218(b)(7)',           sub:'b7',  cat:'Signs',     type:'CFR', desc:'Tampering with, removal, marring, or destruction of posted signs', amount:150 },
+  // Trespass / Access
+  { code:'38 CFR 1.218(b)(8)',           sub:'b8',  cat:'Trespass',  type:'CFR', desc:'Entry into areas posted as closed to the public or others (trespass)', amount:50 },
+  { code:'38 CFR 1.218(b)(12)',          sub:'b12', cat:'Trespass',  type:'CFR', desc:'Failure to depart premises by unauthorized persons', amount:50 },
+  { code:'38 CFR 1.218(b)(13)',          sub:'b13', cat:'Trespass',  type:'CFR', desc:'Unauthorized loitering, sleeping, or assembly on property', amount:50 },
+  // Demonstrations / Ceremonies
+  { code:'38 CFR 1.218(a)(5) / (b)(9)', sub:'b9',  cat:'Conduct',   type:'CFR', desc:'Unauthorized demonstration or service in a national cemetery or on other VA property', amount:250 },
+  { code:'38 CFR 1.218(b)(10)',          sub:'b10', cat:'Conduct',   type:'CFR', desc:'Creating a disturbance during a burial ceremony', amount:250 },
+  // Disorderly Conduct
+  { code:'38 CFR 1.218(b)(11)',          sub:'b11', cat:'Conduct',   type:'CFR', desc:'Disorderly conduct — loud/boisterous noise, obstructing entrances/exits/corridors, impeding facility operations', amount:250 },
+  // Gambling
+  { code:'38 CFR 1.218(a)(6) / (b)(14)',sub:'b14', cat:'Conduct',   type:'CFR', desc:'Gambling — participating in games of chance for monetary gain, operating gambling devices, pool, lottery, or taking/giving bets', amount:200 },
+  // Alcohol / Drugs
+  { code:'38 CFR 1.218(a)(7) / (b)(15)',sub:'b15', cat:'Alcohol/Drugs', type:'CFR', desc:'Operation of a vehicle under the influence of alcohol, narcotics, hallucinogens, marijuana, barbiturates, or amphetamines', amount:0, mca:true },
+  { code:'38 CFR 1.218(b)(16)',          sub:'b16', cat:'Alcohol/Drugs', type:'CFR', desc:'Entering VA premises under the influence of alcoholic beverages or narcotic drugs, hallucinogens, marijuana, barbiturates, or amphetamines', amount:200 },
+  { code:'38 CFR 1.218(b)(17)',          sub:'b17', cat:'Alcohol/Drugs', type:'CFR', desc:'Unauthorized use on property of alcoholic beverages, narcotic drugs, hallucinogens, marijuana, barbiturates, or amphetamines', amount:300 },
+  { code:'38 CFR 1.218(b)(18)',          sub:'b18', cat:'Alcohol/Drugs', type:'CFR', desc:'Unauthorized introduction on VA property of alcoholic beverages or narcotic drugs, or unauthorized giving of same to a patient or beneficiary', amount:500 },
+  // Solicitation / Vending
+  { code:'38 CFR 1.218(a)(8) / (b)(19)',sub:'b19', cat:'Solicitation', type:'CFR', desc:'Unauthorized solicitation of alms and contributions on premises', amount:50 },
+  { code:'38 CFR 1.218(b)(20)',          sub:'b20', cat:'Solicitation', type:'CFR', desc:'Commercial soliciting or vending, or the collection of private debts on property', amount:50 },
+  // Pamphlets / Placards
+  { code:'38 CFR 1.218(a)(9) / (b)(21)',sub:'b21', cat:'Solicitation', type:'CFR', desc:'Distribution of pamphlets, handbills, and flyers without authorization', amount:25 },
+  { code:'38 CFR 1.218(b)(22)',          sub:'b22', cat:'Solicitation', type:'CFR', desc:'Display of placards or posting of material on property without authorization', amount:25 },
+  // Photography
+  { code:'38 CFR 1.218(a)(10) / (b)(23)',sub:'b23',cat:'Property',  type:'CFR', desc:'Unauthorized photography on premises', amount:50 },
+  // Traffic
+  { code:'38 CFR 1.218(a)(12) / (b)(24)',sub:'b24',cat:'Traffic',   type:'CFR', desc:'Failure to comply with traffic directions of VA police', amount:25 },
+  { code:'38 CFR 1.218(b)(25)',           sub:'b25',cat:'Traffic',   type:'CFR', desc:'Parking in spaces posted as reserved for physically disabled persons (handicapped)', amount:50 },
+  { code:'38 CFR 1.218(b)(26)',           sub:'b26',cat:'Traffic',   type:'CFR', desc:'Parking in no-parking areas, lanes, or crosswalks (yellow borders or yellow stripes)', amount:25 },
+  { code:'38 CFR 1.218(b)(27)',           sub:'b27',cat:'Traffic',   type:'CFR', desc:'Parking in emergency vehicle spaces/lanes (red borders), fire lanes, or within 15 feet of a fire hydrant', amount:50 },
+  { code:'38 CFR 1.218(b)(28)',           sub:'b28',cat:'Traffic',   type:'CFR', desc:'Parking within an intersection or blocking a posted vehicle entrance or exit lane', amount:25 },
+  { code:'38 CFR 1.218(b)(29)',           sub:'b29',cat:'Traffic',   type:'CFR', desc:'Parking in spaces posted as reserved or in excess of a posted time limit', amount:15 },
+  { code:'38 CFR 1.218(b)(30)',           sub:'b30',cat:'Traffic',   type:'CFR', desc:'Failing to come to a complete stop at a STOP sign', amount:25 },
+  { code:'38 CFR 1.218(b)(31)',           sub:'b31',cat:'Traffic',   type:'CFR', desc:'Failing to yield to a pedestrian in a marked and posted crosswalk', amount:25 },
+  { code:'38 CFR 1.218(b)(32)',           sub:'b32',cat:'Traffic',   type:'CFR', desc:'Driving in the wrong direction on a posted one-way street', amount:25 },
+  { code:'38 CFR 1.218(b)(33)',           sub:'b33',cat:'Traffic',   type:'CFR', desc:'Operation of a vehicle in a reckless or unsafe manner, too fast for conditions, drag racing, overriding curbs, or leaving the roadway', amount:100 },
+  { code:'38 CFR 1.218(b)(34)(i)',        sub:'b34i',cat:'Traffic',  type:'CFR', desc:'Exceeding posted speed limit by up to 10 MPH', amount:25 },
+  { code:'38 CFR 1.218(b)(34)(ii)',       sub:'b34ii',cat:'Traffic', type:'CFR', desc:'Exceeding posted speed limit by up to 20 MPH', amount:50 },
+  { code:'38 CFR 1.218(b)(34)(iii)',      sub:'b34iii',cat:'Traffic',type:'CFR', desc:'Exceeding posted speed limit by more than 20 MPH', amount:100 },
+  { code:'38 CFR 1.218(b)(35)',           sub:'b35',cat:'Traffic',   type:'CFR', desc:'Creating excessive noise in a hospital or cemetery zone by muffler cut out, excessive horn use, or other means', amount:50 },
+  { code:'38 CFR 1.218(b)(36)',           sub:'b36',cat:'Traffic',   type:'CFR', desc:'Failure to yield right of way to other vehicles', amount:50 },
+  // Weapons
+  { code:'38 CFR 1.218(a)(13) / (b)(37)',sub:'b37',cat:'Weapons',   type:'CFR', desc:'Possession of firearms, carried openly or concealed, loaded or unloaded (except federal/state law enforcement on official business)', amount:500 },
+  { code:'38 CFR 1.218(b)(38)',           sub:'b38',cat:'Weapons',   type:'CFR', desc:'Introduction or possession of explosives, explosive devices which fire a projectile, ammunition, or combustibles', amount:500 },
+  { code:'38 CFR 1.218(b)(39)',           sub:'b39',cat:'Weapons',   type:'CFR', desc:'Possession of knives exceeding 3-inch blade, switchblade knives, hatchets, clubs, hand-held weapons, or brass knuckles', amount:300 },
+  { code:'38 CFR 1.218(b)(40)',           sub:'b40',cat:'Weapons',   type:'CFR', desc:'Unauthorized possession of incapacitating liquid or gas-emitting weapons', amount:200 },
+  // Keys / Locks
+  { code:'38 CFR 1.218(a)(15) / (b)(41)',sub:'b41',cat:'Property',  type:'CFR', desc:'Unauthorized possession, manufacture, or use of keys or barrier card-type keys to rooms or areas on the property', amount:200 },
+  { code:'38 CFR 1.218(b)(42)',           sub:'b42',cat:'Property',  type:'CFR', desc:'Surreptitious opening, or attempted opening, of locks or card-operated barrier mechanisms on property', amount:500 },
+  // Sexual Conduct
+  { code:'38 CFR 1.218(a)(16) / (b)(43)',sub:'b43',cat:'Conduct',   type:'CFR', desc:'Soliciting for, or the act of, prostitution on VA property', amount:250 },
+  { code:'38 CFR 1.218(b)(44)',           sub:'b44',cat:'Conduct',   type:'CFR', desc:'Any unlawful sexual activity on VA property', amount:250 },
+  // Cemetery
+  { code:'38 CFR 1.218(a)(14) / (b)(45)',sub:'b45',cat:'Cemetery',  type:'CFR', desc:'Jogging, bicycling, sledding, or any recreational physical activity conducted on cemetery grounds', amount:50 },
+];
+
+const CODE_CATS = ['All', 'Traffic', 'Conduct', 'Weapons', 'Property', 'Alcohol/Drugs', 'Trespass', 'Solicitation', 'Signs', 'Cemetery'];
+
+// ===== INIT =====
+function init() {
+  populateStateSelects();
+  populateVehicleYears();
+  buildCategoryChips();
+  buildCodePageCats();
+  setAppearance('O');
+  resetTicketNum();
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('f-issue-datetime').value = now.toISOString().slice(0,16);
+  document.getElementById('f-location-code').value = 'KW50';
+  document.getElementById('f-district').value = 'KYW';
+  renderOffenseResults('');
+  refreshDashboard();
+}
+
+function populateStateSelects() {
+  const opts = ['<option value="">— State —</option>'] + STATES.map(s=>`<option value="${s}">${s}</option>`).join('');
+  ['f-def-state','f-dl-state','f-tag-st'].forEach(id => {
+    document.getElementById(id).innerHTML = opts;
+  });
+  document.getElementById('f-def-state').value = 'KY';
+  document.getElementById('f-dl-state').value = 'KY';
+  document.getElementById('f-tag-st').value = 'KY';
+}
+
+function populateVehicleYears() {
+  const sel = document.getElementById('f-veh-year');
+  sel.innerHTML = '<option value="">— Year —</option>';
+  for (let y = new Date().getFullYear() + 1; y >= 1960; y--) {
+    sel.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+}
+
+function buildCategoryChips() {
+  const container = document.getElementById('offense-cats');
+  container.innerHTML = CODE_CATS.map(c =>
+    `<span class="cat-chip${c==='All'?' active':''}" data-cat="${c}" onclick="selectCat(this,'${c}')">${c}</span>`
+  ).join('');
+}
+
+function buildCodePageCats() {
+  const container = document.getElementById('code-page-cats');
+  container.innerHTML = CODE_CATS.map(c =>
+    `<span class="filter-chip${c==='All'?' active':''}" data-cat="${c}" onclick="selectCodePageCat(this,'${c}')">${c}</span>`
+  ).join('');
+}
+
+// ===== NAV =====
+function showView(name, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if (el) el.classList.add('active');
+  if (name==='dashboard') refreshDashboard();
+    if (name==='saved') refreshSaved();
+  if (name==='codes') renderCodePage();
+  if (name==='xml-export') refreshExportTable();
+}
+
+function newTicket() {
+  editingIndex = -1;
+  clearForm();
+  showView('new-ticket', document.querySelectorAll('.sidebar-item')[1]);
+}
+
+// ===== OFFENSE SEARCH WIDGET =====
+let activeCat = 'All';
+
+function selectCat(el, cat) {
+  activeCat = cat;
+  document.querySelectorAll('#offense-cats .cat-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderOffenseResults(document.getElementById('offense-search-input').value);
+}
+
+function filterOffenses() {
+  renderOffenseResults(document.getElementById('offense-search-input').value);
+}
+
+function renderOffenseResults(query) {
+  const q = query.toLowerCase().trim();
+  const filtered = VA_CODES.filter(c => {
+    const catOk = activeCat === 'All' || c.cat === activeCat;
+    const searchOk = !q || c.code.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q) || c.cat.toLowerCase().includes(q);
+    return catOk && searchOk;
+  });
+  const container = document.getElementById('offense-results');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="offense-no-results">No codes found. Try a different keyword or category.</div>';
+    return;
+  }
+  container.innerHTML = filtered.map(c => {
+    const idx = VA_CODES.indexOf(c);
+    const sel = selectedOffense && selectedOffense.code === c.code;
+    return '<div class="offense-item' + (sel ? ' selected' : '') + '" onclick="selectOffense(' + idx + ')">' +
+      '<div><div class="offense-code-tag">' + c.code + '</div><div class="offense-desc-text">' + c.desc + '</div></div>' +
+      '<div class="offense-meta">' +
+      '<span class="badge ' + (c.cat==='Traffic' ? 'badge-optional' : 'badge-mandatory') + '" style="font-size:0.65rem">' + c.cat + '</span>' +
+      (c.mca ? '<span class="offense-mca">MCA</span>' : '<span class="offense-amt">$' + c.amount + '</span>') +
+      '</div></div>';
+  }).join('');
+}
+
+function selectOffense(idx) {
+  const code = VA_CODES[idx];
+  selectedOffense = code;
+  document.getElementById('f-offense-statute').value = code.code;
+  document.getElementById('f-offense-description').value = code.desc;
+  document.getElementById('f-offense-code').value = code.type;
+  if (code.mca) {
+    setAppearance('M');
+  } else {
+    setAppearance('O');
+    document.getElementById('f-forfeiture').value = code.amount;
+    calcTotal();
+  }
+  const disp = document.getElementById('offense-selected-display');
+  document.getElementById('offense-selected-text').textContent = '\u2713 ' + code.code + ' \u2014 ' + code.desc + (code.mca ? ' (Mandatory Court Appearance)' : ' ($' + code.amount + ')');
+  disp.classList.add('visible');
+  renderOffenseResults(document.getElementById('offense-search-input').value);
+  showToast('\u2705 Violation code loaded');
+}
+
+function clearOffenseSelection() {
+  selectedOffense = null;
+  document.getElementById('offense-selected-display').classList.remove('visible');
+  document.getElementById('f-offense-statute').value = '';
+  document.getElementById('f-offense-description').value = '';
+  renderOffenseResults(document.getElementById('offense-search-input').value);
+}
+
+// ===== CODE PAGE =====
+function selectCodePageCat(el, cat) {
+  codePageCatFilter = cat;
+  document.querySelectorAll('#code-page-cats .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderCodePage();
+}
+
+function renderCodePage() {
+  const q = (document.getElementById('code-search-input') ? document.getElementById('code-search-input').value : '').toLowerCase();
+  const filtered = VA_CODES.filter(c => {
+    const catOk = codePageCatFilter === 'All' || c.cat === codePageCatFilter;
+    const searchOk = !q || c.code.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q);
+    return catOk && searchOk;
+  });
+  document.getElementById('code-results').innerHTML = filtered.length
+    ? filtered.map(c => {
+        const idx = VA_CODES.indexOf(c);
+        return '<div class="code-card" onclick="useCodeFromPage(' + idx + ')">' +
+          '<div style="flex:1"><div class="code-id">' + c.code + '</div>' +
+          '<div class="code-cat-tag">' + c.cat + '</div>' +
+          '<div class="code-desc">' + c.desc + '</div></div>' +
+          '<div class="code-meta">' +
+          (c.mca ? '<span class="code-mca-badge">MCA \u2014 Mandatory Court</span>' : '<span class="code-amount">$' + c.amount + '</span>') +
+          '</div></div>';
+      }).join('')
+    : '<div style="color:var(--muted);padding:1rem">No codes found.</div>';
+}
+
+function useCodeFromPage(idx) {
+  selectOffense(idx);
+  showView('new-ticket', document.querySelectorAll('.sidebar-item')[1]);
+}
+
+// ===== APPEARANCE =====
+function setAppearance(type) {
+  currentAppearance = type;
+  document.getElementById('opt-box-a').classList.remove('selected-mandatory');
+  document.getElementById('opt-box-b').classList.remove('selected-optional');
+  var fs = document.getElementById('forfeiture-section');
+  if (type === 'M') {
+    document.getElementById('opt-box-a').classList.add('selected-mandatory');
+    fs.style.opacity = '0.4';
+    fs.style.pointerEvents = 'none';
+  } else {
+    document.getElementById('opt-box-b').classList.add('selected-optional');
+    fs.style.opacity = '1';
+    fs.style.pointerEvents = 'auto';
+  }
+}
+
+function calcTotal() {
+  var forf = parseFloat(document.getElementById('f-forfeiture').value) || 0;
+  document.getElementById('total-display').textContent = '$' + (forf + 30).toFixed(2);
+}
+
+// ===== TICKET NUMBER =====
+function generateTicketNumber(locCode) {
+  var prefix = (locCode || 'VA').replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,2).padEnd(2,'A');
+  return prefix + String(Math.floor(Math.random()*999999)).padStart(6,'0');
+}
+function resetTicketNum() {
+  var loc = document.getElementById('f-location-code').value || 'VA';
+  var num = generateTicketNumber(loc);
+  document.getElementById('f-violation-number').value = num;
+  document.getElementById('ticket-num-display').textContent = num;
+}
+function updateTicketNum() {
+  if (!editingIndex || editingIndex < 0) resetTicketNum();
+}
+
+// ===== COLLECT FORM =====
+function collectFormData() {
+  var issueDT = document.getElementById('f-issue-datetime').value;
+  var forf = parseFloat(document.getElementById('f-forfeiture').value) || 0;
+  var total = currentAppearance === 'O' ? forf + 30 : 0;
+  return {
+    location_code: document.getElementById('f-location-code').value,
+    violation_number: document.getElementById('f-violation-number').value,
+    officer_name: document.getElementById('f-officer-name').value.trim().toUpperCase(),
+    officer_number: document.getElementById('f-officer-number').value.trim(),
+    issue_date_time: issueDT ? fmtDT(issueDT) : '',
+    offense_code: document.getElementById('f-offense-code').value,
+    offense_statute: document.getElementById('f-offense-statute').value.trim(),
+    offense_location: document.getElementById('f-offense-location').value.trim(),
+    offense_description: document.getElementById('f-offense-description').value.trim(),
+    actual_speed: document.getElementById('f-actual-speed').value,
+    posted_speed: document.getElementById('f-posted-speed').value,
+    hazmat: document.getElementById('f-hazmat').checked,
+    cdl: document.getElementById('f-cdl').checked,
+    cmv: document.getElementById('f-cmv').checked,
+    pass: document.getElementById('f-pass').checked,
+    defendant_last_name: document.getElementById('f-def-last').value.trim().toUpperCase(),
+    defendant_first_name: document.getElementById('f-def-first').value.trim().toUpperCase(),
+    defendant_middle_initial: document.getElementById('f-def-mi').value.trim().toUpperCase(),
+    defendant_phone: document.getElementById('f-def-phone').value.trim(),
+    defendant_street_address: document.getElementById('f-def-address').value.trim(),
+    defendant_city: document.getElementById('f-def-city').value.trim(),
+    defendant_state: document.getElementById('f-def-state').value,
+    defendant_zip: document.getElementById('f-def-zip').value.trim(),
+    date_of_birth: fmtDate(document.getElementById('f-def-dob').value),
+    drivers_license: document.getElementById('f-dl-num').value.trim(),
+    drivers_lic_st: document.getElementById('f-dl-state').value,
+    ssn: document.getElementById('f-ssn').value.trim(),
+    sex: document.getElementById('f-sex').value,
+    race: document.getElementById('f-race').value,
+    hair: document.getElementById('f-hair').value,
+    eyes: document.getElementById('f-eyes').value,
+    height: document.getElementById('f-height').value,
+    weight: document.getElementById('f-weight').value,
+    age_type: (document.querySelector('input[name="age-type"]:checked') || {value:'Adult'}).value,
+    vin: document.getElementById('f-vin').value.trim(),
+    tag_no: document.getElementById('f-tag-no').value.trim(),
+    tag_st: document.getElementById('f-tag-st').value,
+    vehicle_year: document.getElementById('f-veh-year').value,
+    vehicle_make: document.getElementById('f-veh-make').value,
+    vehicle_model: document.getElementById('f-veh-model').value.trim(),
+    vehicle_color: document.getElementById('f-veh-color').value,
+    forfeiture_amt: forf.toFixed(2),
+    processing_fee: currentAppearance==='O' ? '30.00' : '',
+    total_due: total > 0 ? total.toFixed(2) : '',
+    hrg_type: currentAppearance,
+    hrg_date_time: fmtDT(document.getElementById('f-hrg-datetime').value),
+    court_address: document.getElementById('f-court-address').value.trim(),
+    district: document.getElementById('f-district').value,
+    probable_cause: document.getElementById('f-probable-cause').value.trim(),
+    pc_personal_obs: document.getElementById('pc-personal-obs').checked,
+    pc_personal_inv: document.getElementById('pc-personal-inv').checked,
+    pc_fellow: document.getElementById('pc-fellow').checked,
+    pc_supplied: document.getElementById('pc-supplied').checked,
+    pc_other: document.getElementById('pc-other').checked
+  };
+}
+
+function fmtDT(val) {
+  if (!val) return '';
+  var d = new Date(val);
+  if (isNaN(d)) return val;
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  var dd = String(d.getDate()).padStart(2,'0');
+  var yyyy = d.getFullYear();
+  var hh = String(d.getHours()).padStart(2,'0');
+  var mn = String(d.getMinutes()).padStart(2,'0');
+  return mm+'/'+dd+'/'+yyyy+' '+hh+':'+mn+':00';
+}
+function fmtDate(val) {
+  if (!val) return '';
+  var p = val.split('-');
+  return p[1]+'/'+p[2]+'/'+p[0];
+}
+
+// ===== VALIDATE =====
+function validate(data) {
+  var req = ['location_code','officer_name','officer_number','issue_date_time','offense_statute','offense_location','offense_description','defendant_last_name','defendant_first_name','defendant_street_address','defendant_city','defendant_state','defendant_zip','date_of_birth','drivers_license'];
+  for (var i=0; i<req.length; i++) { if (!data[req[i]]) return 'Required field missing: ' + req[i].replace(/_/g,' '); }
+  return null;
+}
+
+// ===== SAVE =====
+function saveTicket() {
+  var data = collectFormData();
+  var err = validate(data);
+  if (err) { showToast('\u26a0\ufe0f ' + err); return; }
+  if (editingIndex >= 0) tickets[editingIndex] = data;
+  else tickets.push(data);
+  localStorage.setItem('cvb-tickets', JSON.stringify(tickets));
+  showToast('\u2705 Saved: ' + data.violation_number);
+  refreshDashboard();
+}
+
+function submitTicket() {
+  var data = collectFormData();
+  var err = validate(data);
+  if (err) { showToast('\u26a0\ufe0f ' + err); return; }
+  data.submitted = true;
+  data.submitted_at = new Date().toISOString();
+  if (editingIndex >= 0) tickets[editingIndex] = data;
+  else { tickets.push(data); editingIndex = tickets.length - 1; }
+  localStorage.setItem('cvb-tickets', JSON.stringify(tickets));
+
+  // Generate and download full PDF
+  generateFullPDF(data);
+
+  // Auto-download XML
+  setTimeout(function() { downloadXML(data); }, 800);
+
+  // Lock form fields
+  lockSubmittedForm();
+
+  // Unlock print button, show new citation button
+  var printBtn = document.getElementById('btn-print-def');
+  printBtn.disabled = false;
+  printBtn.style.opacity = '1';
+  printBtn.style.cursor = 'pointer';
+  document.getElementById('btn-new-same').style.display = 'inline-flex';
+  document.getElementById('btn-submit').style.display = 'none';
+  document.getElementById('btn-clear').style.display = 'none';
+  document.getElementById('submit-status').innerHTML = '<span class="submitted-badge">\u2705 Submitted</span> <span style="font-size:0.75rem;color:var(--muted)">' + data.violation_number + ' locked</span>';
+
+  showToast('\u2705 Ticket submitted: ' + data.violation_number);
+  refreshDashboard();
+}
+
+function lockSubmittedForm() {
+  var fields = document.querySelectorAll('#view-new-ticket input, #view-new-ticket select');
+  fields.forEach(function(f) { f.disabled = true; f.style.background = '#f0f0f0'; });
+  // Lock offense widget
+  var ow = document.getElementById('offense-search-input');
+  if (ow) { ow.disabled = true; }
+  var cats = document.querySelectorAll('.cat-chip, .offense-item');
+  cats.forEach(function(c) { c.style.pointerEvents = 'none'; c.style.opacity = '0.6'; });
+  // Lock scan buttons
+  document.querySelectorAll('.btn-scan').forEach(function(b) { b.disabled = true; b.style.opacity = '0.4'; });
+}
+
+function printDefendantCopy() {
+  var idx = editingIndex >= 0 ? editingIndex : tickets.length - 1;
+  if (idx < 0) return;
+  renderPrint(tickets[idx]);
+  showView('print', null);
+  setTimeout(function() { window.print(); }, 400);
+}
+
+function newCitationSameDefendant() {
+  var idx = editingIndex >= 0 ? editingIndex : tickets.length - 1;
+  if (idx < 0) { newTicket(); return; }
+  var t = tickets[idx];
+  editingIndex = -1;
+
+  // Clear form first
+  clearFormSilent();
+
+  // Re-fill defendant info
+  function setV(id, v) { var el=document.getElementById(id); if(el && v!==undefined) { el.disabled=false; el.style.background=''; el.value=v||''; } }
+  setV('f-def-last', t.defendant_last_name);
+  setV('f-def-first', t.defendant_first_name);
+  setV('f-def-mi', t.defendant_middle_initial);
+  setV('f-def-phone', t.defendant_phone);
+  setV('f-def-address', t.defendant_street_address);
+  setV('f-def-city', t.defendant_city);
+  setV('f-def-state', t.defendant_state);
+  setV('f-def-zip', t.defendant_zip);
+  setV('f-def-dob', t.date_of_birth ? (function(d){ var p=d.split('/'); return p.length===3?p[2]+'-'+p[0]+'-'+p[1]:''; })(t.date_of_birth) : '');
+  setV('f-dl-num', t.drivers_license);
+  setV('f-dl-state', t.drivers_lic_st);
+  setV('f-ssn', t.ssn);
+  setV('f-sex', t.sex);
+  setV('f-race', t.race);
+  setV('f-hair', t.hair);
+  setV('f-eyes', t.eyes);
+  setV('f-height', t.height);
+  setV('f-weight', t.weight);
+  // Vehicle
+  setV('f-tag-no', t.tag_no);
+  setV('f-tag-st', t.tag_st);
+  setV('f-veh-year', t.vehicle_year);
+  setV('f-veh-make', t.vehicle_make);
+  setV('f-veh-model', t.vehicle_model);
+  setV('f-veh-color', t.vehicle_color);
+  setV('f-vin', t.vin);
+  // Officer & location
+  setV('f-location-code', t.location_code);
+  setV('f-officer-name', t.officer_name);
+  setV('f-officer-number', t.officer_number);
+  setV('f-district', t.district);
+  // Probable cause carries over
+  setV('f-probable-cause', t.probable_cause);
+  ['pc-personal-obs','pc-personal-inv','pc-fellow','pc-supplied','pc-other'].forEach(function(id,i){
+    var el=document.getElementById(id); if(el){ el.disabled=false; el.checked=[t.pc_personal_obs,t.pc_personal_inv,t.pc_fellow,t.pc_supplied,t.pc_other][i]; }
+  });
+  if (t.age_type==='Juvenile') { var j=document.getElementById('f-juvenile'); if(j){j.disabled=false;j.checked=true;} }
+  else { var a=document.getElementById('f-adult'); if(a){a.disabled=false;a.checked=true;} }
+
+  // Reset submit/print buttons
+  document.getElementById('btn-submit').style.display = '';
+  document.getElementById('btn-clear').style.display = '';
+  document.getElementById('btn-new-same').style.display = 'none';
+  var printBtn = document.getElementById('btn-print-def');
+  printBtn.disabled = true; printBtn.style.opacity = '0.4'; printBtn.style.cursor = 'not-allowed';
+  document.getElementById('submit-status').textContent = 'Data stored locally in your browser';
+
+  // New violation number, reset time to now
+  resetTicketNum();
+  var now = new Date();
+  now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  var el = document.getElementById('f-issue-datetime');
+  if(el){el.disabled=false;el.style.background='';el.value=now.toISOString().slice(0,16);}
+  document.getElementById('f-hrg-datetime').value='';
+  document.getElementById('f-court-address').value='';
+
+  // Re-enable scan buttons
+  document.querySelectorAll('.btn-scan').forEach(function(b){b.disabled=false;b.style.opacity='1';});
+  // Re-enable offense widget
+  var ow=document.getElementById('offense-search-input'); if(ow)ow.disabled=false;
+  document.querySelectorAll('.cat-chip,.offense-item').forEach(function(c){c.style.pointerEvents='';c.style.opacity='';});
+  clearOffenseSelection();
+  setAppearance('O');
+  calcTotal();
+
+  showToast('\u2705 New citation started \u2014 defendant info carried over');
+  showView('new-ticket', document.querySelectorAll('.sidebar-item')[1]);
+}
+
+function clearFormSilent() {
+  // Same as clearForm but doesn't reset defendant/officer fields (used by newCitationSameDefendant)
+  var textIds = ['f-offense-location','f-offense-description','f-offense-statute','f-actual-speed','f-posted-speed','f-forfeiture'];
+  textIds.forEach(function(id) { var el=document.getElementById(id); if(el){el.disabled=false;el.style.background='';el.value='';} });
+  document.getElementById('f-offense-code').value='CFR';
+  clearOffenseSelection();
+  document.getElementById('offense-search-input').value='';
+  renderOffenseResults('');
+  setAppearance('O');
+  calcTotal();
+}
+
+function downloadXML(data) {
+  var xml = buildXML(data);
+  var blob = new Blob([xml], {type: 'application/xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = data.location_code + '_' + data.violation_number + '_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '_CVB.xml';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── LICENSE SCANNER ──
+// Uses a dedicated hidden input that gets focused when scan mode is active.
+// This is the most reliable method for USB/Bluetooth PDF417 barcode scanners
+// because scanners act like a keyboard and type into whatever field is focused.
+var scanMode = null;
+var scanTimer = null;
+
+function getScanInput() {
+  var el = document.getElementById('scan-capture-input');
+  if (!el) {
+    el = document.createElement('input');
+    el.id = 'scan-capture-input';
+    el.type = 'text';
+    el.setAttribute('autocomplete', 'off');
+    el.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0;';
+    document.body.appendChild(el);
+    el.addEventListener('input', function() {
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(function() {
+        var raw = el.value;
+        el.value = '';
+        if (raw && raw.length > 8 && scanMode) {
+          processScan(raw);
+        }
+      }, 150);
+    });
+    // Also catch Enter key from scanner
+    el.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        clearTimeout(scanTimer);
+        var raw = el.value;
+        el.value = '';
+        if (raw && raw.length > 8 && scanMode) {
+          processScan(raw);
+        }
+      }
+    });
+  }
+  return el;
+}
+
+function startLicenseScan() {
+  scanMode = 'license';
+  var s = document.getElementById('scan-status');
+  s.style.display = 'block';
+  s.style.background = '#dbeafe';
+  s.style.color = '#1e40af';
+  s.style.borderColor = '#bfdbfe';
+  s.textContent = '\u23f3 Ready to scan \u2014 scan the barcode on the BACK of the license now...';
+  // Blur any currently focused field so scanner data doesn't go there
+  if (document.activeElement) document.activeElement.blur();
+  // Focus the hidden capture input
+  var inp = getScanInput();
+  inp.value = '';
+  setTimeout(function() { inp.focus(); }, 50);
+  showToast('\ud83d\udcf7 Scan mode active \u2014 scan license barcode now');
+}
+
+function startRegScan() {
+  scanMode = 'registration';
+  var s = document.getElementById('reg-scan-status');
+  s.style.display = 'block';
+  s.style.background = '#dbeafe';
+  s.style.color = '#1e40af';
+  s.style.borderColor = '#bfdbfe';
+  s.textContent = '\u23f3 Ready to scan \u2014 scan the barcode on the vehicle registration...';
+  if (document.activeElement) document.activeElement.blur();
+  var inp = getScanInput();
+  inp.value = '';
+  setTimeout(function() { inp.focus(); }, 50);
+  showToast('\ud83d\udcf7 Scan mode active \u2014 scan registration barcode now');
+}
+
+// Cancel scan if user clicks elsewhere
+document.addEventListener('click', function(e) {
+  if (!scanMode) return;
+  var scanInput = document.getElementById('scan-capture-input');
+  if (e.target.id === 'scan-capture-input') return;
+  if (e.target.classList.contains('btn-scan')) return;
+  // Refocus scan input if still in scan mode
+  if (scanInput) setTimeout(function(){ scanInput.focus(); }, 10);
+});
+
+function cancelScan(type) {
+  scanMode = null;
+  var s = document.getElementById(type === 'license' ? 'scan-status' : 'reg-scan-status');
+  if (s) s.style.display = 'none';
+  var inp = document.getElementById('scan-capture-input');
+  if (inp) { inp.value = ''; inp.blur(); }
+  showToast('Scan cancelled');
+}
+
+function processScan(raw) {
+  var s = document.getElementById('scan-status');
+  var rs = document.getElementById('reg-scan-status');
+  if (scanMode === 'license') {
+    var parsed = parseAAMVA(raw);
+    if (!parsed) {
+      if(s) { s.style.background='#fee2e2';s.style.color='#991b1b';s.style.borderColor='#fca5a5'; s.textContent='\u274c Could not read barcode. Try again or enter manually.'; }
+      scanMode = null; return;
+    }
+    // Check for existing data
+    var hasData = document.getElementById('f-def-last').value || document.getElementById('f-def-first').value;
+    if (hasData) {
+      if (!confirm('Defendant fields already have data. Overwrite with scanned license?')) { scanMode=null; if(s)s.style.display='none'; return; }
+    }
+    fillLicenseData(parsed);
+    if(s) { s.style.background='#dcfce7';s.style.color='#166534';s.style.borderColor='#86efac'; s.textContent='\u2705 License scanned: '+parsed.last+', '+parsed.first; }
+    setTimeout(function(){ if(s)s.style.display='none'; }, 3000);
+  } else if (scanMode === 'registration') {
+    var parsed2 = parseRegistration(raw);
+    if (!parsed2) {
+      if(rs) { rs.style.background='#fee2e2';rs.style.color='#991b1b';rs.style.borderColor='#fca5a5'; rs.textContent='\u274c Could not read barcode. Try again or enter manually.'; }
+      scanMode = null; return;
+    }
+    var hasVeh = document.getElementById('f-tag-no').value || document.getElementById('f-vin').value;
+    if (hasVeh) {
+      if (!confirm('Vehicle fields already have data. Overwrite with scanned registration?')) { scanMode=null; if(rs)rs.style.display='none'; return; }
+    }
+    fillRegistrationData(parsed2);
+    if(rs) { rs.style.background='#dcfce7';rs.style.color='#166534';rs.style.borderColor='#86efac'; rs.textContent='\u2705 Registration scanned: '+parsed2.plate; }
+    setTimeout(function(){ if(rs)rs.style.display='none'; }, 3000);
+  }
+  scanMode = null;
+}
+
+function parseAAMVA(raw) {
+  // AAMVA PDF417 driver license barcode standard
+  try {
+    if (raw.indexOf('@') === -1 && raw.indexOf('ANSI') === -1) return null;
+    var data = {};
+    // Extract subfile data
+    var fields = {
+      'DCS': 'last', 'DAC': 'first', 'DAD': 'middle',
+      'DBB': 'dob', 'DAG': 'address', 'DAI': 'city',
+      'DAJ': 'state', 'DAK': 'zip', 'DAQ': 'dl_num',
+      'DAU': 'height', 'DAY': 'eyes', 'DBC': 'sex',
+      'DCL': 'race', 'DAW': 'weight'
+    };
+    Object.keys(fields).forEach(function(code) {
+      var idx = raw.indexOf(code);
+      if (idx !== -1) {
+        var start = idx + code.length;
+        var end = raw.indexOf('\n', start);
+        if (end === -1) end = raw.indexOf('\r', start);
+        if (end === -1) end = start + 30;
+        data[fields[code]] = raw.substring(start, end).replace(/\r/g,'').trim();
+      }
+    });
+    if (!data.last && !data.first) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+function fillLicenseData(d) {
+  function setV(id,v){ var el=document.getElementById(id); if(el&&v){ el.value=v; } }
+  if(d.last) setV('f-def-last', d.last.toUpperCase());
+  if(d.first) setV('f-def-first', d.first.toUpperCase());
+  if(d.middle) setV('f-def-mi', d.middle.substring(0,1).toUpperCase());
+  if(d.address) setV('f-def-address', d.address.substring(0,35));
+  if(d.city) setV('f-def-city', d.city);
+  if(d.state) setV('f-def-state', d.state);
+  if(d.zip) setV('f-def-zip', d.zip.substring(0,5));
+  if(d.dl_num) setV('f-dl-num', d.dl_num);
+  if(d.state) setV('f-dl-state', d.state);
+  if(d.dob) {
+    // AAMVA DOB format: MMDDYYYY
+    var dob = d.dob.replace(/\D/g,'');
+    if(dob.length===8) {
+      var yr=dob.substring(4,8), mo=dob.substring(0,2), dy=dob.substring(2,4);
+      setV('f-def-dob', yr+'-'+mo+'-'+dy);
+    }
+  }
+  if(d.height) {
+    // AAMVA height often in FTI (e.g. 510 = 5'10")
+    var ht = d.height.replace(/\D/g,'');
+    if(ht.length===3) { var htStr=ht[0]+"'"+ht.substring(1)+'"'; setV('f-height', htStr); }
+  }
+  if(d.eyes) {
+    var eyeMap={'BRN':'BRN','BLU':'BLU','GRN':'GRN','HAZ':'HAZ','GRY':'GRY','BLK':'BLK'};
+    var ey = d.eyes.toUpperCase().substring(0,3);
+    if(eyeMap[ey]) setV('f-eyes', eyeMap[ey]);
+  }
+  if(d.sex) {
+    setV('f-sex', d.sex==='1'||d.sex.toUpperCase()==='M'?'M':'F');
+  }
+  if(d.weight) setV('f-weight', d.weight.replace(/\D/g,''));
+}
+
+function parseRegistration(raw) {
+  try {
+    var data = {};
+    // Try common registration barcode fields
+    var vinIdx = raw.search(/[A-HJ-NPR-Z0-9]{17}/);
+    if(vinIdx !== -1) data.vin = raw.substring(vinIdx, vinIdx+17);
+    // Plate
+    var plateMatch = raw.match(/([A-Z0-9]{3,8})/);
+    if(plateMatch) data.plate = plateMatch[1];
+    // Year
+    var yearMatch = raw.match(/(20[0-9]{2}|19[6-9][0-9])/);
+    if(yearMatch) data.year = yearMatch[1];
+    if(!data.vin && !data.plate) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+function fillRegistrationData(d) {
+  function setV(id,v){ var el=document.getElementById(id); if(el&&v){ el.value=v; } }
+  if(d.vin) setV('f-vin', d.vin);
+  if(d.plate) setV('f-tag-no', d.plate);
+  if(d.year) setV('f-veh-year', d.year);
+}
+
+// ── FULL PDF GENERATION ──
+function generateFullPDF(t) {
+  var win = window.open('', '_blank');
+  if (!win) { showToast('\u26a0\ufe0f Allow popups to generate PDF'); return; }
+  var military = t.issue_date_time || '';
+  var optBox = t.hrg_type === 'O';
+  var pcBasis = [];
+  if(t.pc_personal_obs) pcBasis.push('My personal observation');
+  if(t.pc_personal_inv) pcBasis.push('My personal investigation');
+  if(t.pc_fellow) pcBasis.push("Fellow officer's observation");
+  if(t.pc_supplied) pcBasis.push('Information supplied to me');
+  if(t.pc_other) pcBasis.push('Other');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+    '<title>USDCVN '+t.violation_number+'</title>'+
+    '<style>'+
+    'body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:0;color:#000;}'+
+    '.page{width:8.5in;min-height:11in;padding:0.5in;box-sizing:border-box;position:relative;}'+
+    '.header{background:#0a1628;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;}'+
+    '.header h1{font-size:14px;margin:0;font-family:Georgia,serif;}'+
+    '.loc-code{border:1px solid rgba(255,255,255,0.5);padding:3px 10px;font-family:monospace;font-size:12px;}'+
+    '.row{display:flex;border-bottom:1px solid #ccc;}'+
+    '.cell{padding:4px 8px;flex:1;}'+
+    '.cell-label{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#666;display:block;}'+
+    '.cell-val{font-weight:700;font-size:11px;}'+
+    '.charge-box{border:2px solid #000;margin:6px 0;padding:6px 8px;}'+
+    '.charge-title{font-size:8px;text-transform:uppercase;letter-spacing:0.1em;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:4px;font-weight:700;}'+
+    '.appear-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #ccc;margin-top:4px;}'+
+    '.appear-box{padding:6px 8px;}'+
+    '.appear-box-a{border-right:1px solid #ccc;}'+
+    '.appear-title{font-size:8px;font-weight:700;text-transform:uppercase;margin-bottom:3px;}'+
+    '.amount{font-family:monospace;font-size:14px;font-weight:700;}'+
+    '.sig-area{padding:6px 8px;border-top:1px solid #ccc;font-size:9px;}'+
+    '.pc-section{margin-top:12px;border:1px solid #ccc;padding:8px;}'+
+    '.pc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid #ccc;padding-bottom:4px;margin-bottom:6px;}'+
+    '.pc-text{font-size:10px;line-height:1.6;white-space:pre-wrap;}'+
+    '.pc-basis{margin-top:8px;font-size:9px;border-top:1px solid #eee;padding-top:6px;}'+
+    '.fold-mark{position:absolute;left:0;width:14px;border-top:1px dashed #999;}'+
+    '.watermark{font-size:8px;color:#999;text-align:center;margin-top:8px;}'+
+    '.full-badge{background:#0a1628;color:#fff;font-size:8px;font-weight:700;padding:2px 6px;border-radius:2px;letter-spacing:0.08em;}'+
+    '@media print{body{margin:0;}.page{padding:0.4in;}}'+
+    '</style></head><body>'+
+    '<div class="page">'+
+    // Fold marks at 1/3 and 2/3 of 11in page (approx 3.67in and 7.33in from top = 264px and 528px at 72dpi)
+    '<div class="fold-mark" style="top:264px"></div>'+
+    '<div class="fold-mark" style="top:528px"></div>'+
+    '<div class="header">'+
+      '<div><div style="font-size:8px;color:#c8a84b;letter-spacing:0.1em">(Rev. 1/2019) &nbsp; <span class="full-badge">FULL COPY — NOT FOR DEFENDANT</span></div>'+
+      '<h1>United States District Court &mdash; Violation Notice</h1></div>'+
+      '<div><div style="font-size:8px;color:#aaa;margin-bottom:3px">CVB Location Code</div><div class="loc-code">'+t.location_code+'</div></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="cell" style="flex:2"><span class="cell-label">Violation Number</span><span class="cell-val">'+t.violation_number+'</span></div>'+
+      '<div class="cell" style="flex:2"><span class="cell-label">Officer Name</span><span class="cell-val">'+t.officer_name+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Officer No.</span><span class="cell-val">'+t.officer_number+'</span></div>'+
+    '</div>'+
+    '<div class="charge-box">'+
+      '<div class="charge-title">You Are Charged With The Following Violation</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">'+
+        '<div><span class="cell-label">Date and Time of Offense (24hr)</span><strong>'+military+'</strong></div>'+
+        '<div><span class="cell-label">Offense Charged</span><strong>'+t.offense_code+' &mdash; '+t.offense_statute+'</strong></div>'+
+      '</div>'+
+      '<div style="margin-bottom:4px"><span class="cell-label">Place of Offense</span><strong>'+t.offense_location+'</strong></div>'+
+      '<div><span class="cell-label">Offense Description / Factual Basis</span><strong>'+t.offense_description+'</strong></div>'+
+      (t.actual_speed ? '<div style="margin-top:4px"><span class="cell-label">Speed</span><strong>Actual: '+t.actual_speed+' MPH &nbsp;|&nbsp; Posted: '+t.posted_speed+' MPH</strong></div>' : '')+
+    '</div>'+
+    '<div style="padding:4px 8px;border-bottom:1px solid #ccc;font-weight:700;font-size:10px">DEFENDANT INFORMATION <span style="font-weight:400;margin-left:12px">Phone: '+t.defendant_phone+'</span></div>'+
+    '<div class="row">'+
+      '<div class="cell" style="flex:2"><span class="cell-label">Last Name</span><span class="cell-val">'+t.defendant_last_name+'</span></div>'+
+      '<div class="cell" style="flex:2"><span class="cell-label">First Name</span><span class="cell-val">'+t.defendant_first_name+'</span></div>'+
+      '<div class="cell"><span class="cell-label">M.I.</span><span class="cell-val">'+t.defendant_middle_initial+'</span></div>'+
+    '</div>'+
+    '<div class="row"><div class="cell" style="flex:3"><span class="cell-label">Street Address</span><span class="cell-val">'+t.defendant_street_address+'</span></div></div>'+
+    '<div class="row">'+
+      '<div class="cell" style="flex:2"><span class="cell-label">City</span><span class="cell-val">'+t.defendant_city+'</span></div>'+
+      '<div class="cell"><span class="cell-label">State</span><span class="cell-val">'+t.defendant_state+'</span></div>'+
+      '<div class="cell"><span class="cell-label">ZIP</span><span class="cell-val">'+t.defendant_zip+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Date of Birth</span><span class="cell-val">'+t.date_of_birth+'</span></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="cell"><span class="cell-label">DL #</span><span class="cell-val">'+t.drivers_license+'</span></div>'+
+      '<div class="cell"><span class="cell-label">DL State</span><span class="cell-val">'+t.drivers_lic_st+'</span></div>'+
+      '<div class="cell"><span class="cell-label">SSN</span><span class="cell-val">'+t.ssn+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Sex</span><span class="cell-val">'+t.sex+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Race</span><span class="cell-val">'+t.race+'</span></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="cell"><span class="cell-label">Hair</span><span class="cell-val">'+t.hair+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Eyes</span><span class="cell-val">'+t.eyes+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Height</span><span class="cell-val">'+t.height+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Weight</span><span class="cell-val">'+t.weight+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Age</span><span class="cell-val">'+t.age_type+'</span></div>'+
+    '</div>'+
+    '<div style="padding:4px 8px;border-bottom:1px solid #ccc;font-weight:700;font-size:10px">VEHICLE</div>'+
+    '<div class="row">'+
+      '<div class="cell"><span class="cell-label">Plate</span><span class="cell-val">'+t.tag_no+'</span></div>'+
+      '<div class="cell"><span class="cell-label">State</span><span class="cell-val">'+t.tag_st+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Year</span><span class="cell-val">'+t.vehicle_year+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Make/Model</span><span class="cell-val">'+t.vehicle_make+' '+t.vehicle_model+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Color</span><span class="cell-val">'+t.vehicle_color+'</span></div>'+
+    '</div>'+
+    '<div class="row"><div class="cell" style="flex:3"><span class="cell-label">VIN</span><span class="cell-val">'+t.vin+'</span></div></div>'+
+    '<div class="appear-grid">'+
+      '<div class="appear-box appear-box-a">'+
+        '<div class="appear-title">A '+(t.hrg_type==='M'?'&#9745;':'&#9744;')+' Appearance Is Required</div>'+
+        '<div style="font-size:9px">If Box A is checked, defendant must appear in court.</div>'+
+      '</div>'+
+      '<div class="appear-box">'+
+        '<div class="appear-title">B '+(optBox?'&#9745;':'&#9744;')+' Appearance Is Optional</div>'+
+        (optBox?'<div style="font-size:9px">Forfeiture: $'+t.forfeiture_amt+'<br>Processing Fee: $30.00<br><strong>PAY THIS AMOUNT: $'+t.total_due+'</strong></div>':'<div style="font-size:9px">Mandatory appearance &mdash; no collateral option.</div>')+
+      '</div>'+
+    '</div>'+
+    '<div style="padding:4px 8px;border-top:1px solid #ccc;font-size:9px">'+
+      '<strong>YOUR COURT DATE</strong> <span style="color:#666">(If no date shown, defendant will be notified by mail.)</span>'+
+      (t.court_address?'<br>Court Address: '+t.court_address:'') +
+    '</div>'+
+    '<div class="sig-area">My signature signifies that I have received a copy of this violation notice. It is not an admission of guilt.<br><br>X Defendant _______________________________________</div>'+
+    '<div class="pc-section">'+
+      '<div class="pc-title">Statement of Probable Cause &mdash; District of '+t.district+'</div>'+
+      '<div class="pc-text">'+t.probable_cause.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'+
+      (pcBasis.length?'<div class="pc-basis"><strong>Based upon:</strong> '+pcBasis.join(', ')+'</div>':'')+
+      '<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:9px">'+
+        '<div>Executed: _____________ &nbsp; Officer Signature: _________________________</div>'+
+        '<div>Magistrate Judge: _________________________</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="watermark">USDCVN Full Officer Copy &mdash; '+t.violation_number+' &mdash; Submitted: '+new Date().toLocaleString()+'</div>'+
+  '</div>'+
+  '<script>window.onload=function(){window.print();}<\/script>'+
+  '</body></html>';
+
+  win.document.write(html);
+  win.document.close();
+}
+
+// ===== CLEAR =====
+function clearForm() {
+  var textIds = ['f-officer-name','f-officer-number','f-offense-location','f-offense-description','f-offense-statute','f-actual-speed','f-posted-speed','f-def-last','f-def-first','f-def-mi','f-def-phone','f-def-address','f-def-city','f-def-zip','f-dl-num','f-ssn','f-vin','f-tag-no','f-veh-model','f-weight','f-forfeiture','f-court-address','f-probable-cause'];
+  textIds.forEach(function(id) { var el=document.getElementById(id); if(el) el.value=''; });
+  ['f-hazmat','f-cdl','f-cmv','f-pass','pc-personal-obs','pc-personal-inv','pc-fellow','pc-supplied','pc-other'].forEach(function(id) { var el=document.getElementById(id); if(el) el.checked=false; });
+  document.getElementById('f-adult').checked = true;
+  document.getElementById('f-location-code').value = 'KW50';
+  document.getElementById('f-district').value = 'KYW';
+  document.getElementById('f-def-state').value = 'KY';
+  document.getElementById('f-dl-state').value = 'KY';
+  document.getElementById('f-tag-st').value = 'KY';
+  document.getElementById('f-sex').value = 'M';
+  document.getElementById('f-race').value = '';
+  document.getElementById('f-hair').value = '';
+  document.getElementById('f-eyes').value = '';
+  document.getElementById('f-height').value = '';
+  document.getElementById('f-veh-make').value = '';
+  document.getElementById('f-veh-color').value = '';
+  document.getElementById('f-veh-year').value = '';
+  document.getElementById('f-offense-code').value = 'CFR';
+  clearOffenseSelection();
+  document.getElementById('offense-search-input').value = '';
+  renderOffenseResults('');
+  setAppearance('O');
+  calcTotal();
+  resetTicketNum();
+  var now = new Date();
+  now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  document.getElementById('f-issue-datetime').value = now.toISOString().slice(0,16);
+  document.getElementById('f-def-dob').value = '';
+  document.getElementById('f-hrg-datetime').value = '';
+}
+
+// ===== LOAD TICKET =====
+function loadTicket(idx) {
+  editingIndex = idx;
+  var t = tickets[idx];
+  function setV(id, v) { var el=document.getElementById(id); if(el && v!==undefined) el.value=v||''; }
+  setV('f-location-code', t.location_code);
+  setV('f-violation-number', t.violation_number);
+  setV('f-officer-name', t.officer_name);
+  setV('f-officer-number', t.officer_number);
+  setV('f-offense-code', t.offense_code);
+  setV('f-offense-statute', t.offense_statute);
+  setV('f-offense-location', t.offense_location);
+  setV('f-offense-description', t.offense_description);
+  setV('f-actual-speed', t.actual_speed);
+  setV('f-posted-speed', t.posted_speed);
+  setV('f-def-last', t.defendant_last_name);
+  setV('f-def-first', t.defendant_first_name);
+  setV('f-def-mi', t.defendant_middle_initial);
+  setV('f-def-phone', t.defendant_phone);
+  setV('f-def-address', t.defendant_street_address);
+  setV('f-def-city', t.defendant_city);
+  setV('f-def-state', t.defendant_state);
+  setV('f-def-zip', t.defendant_zip);
+  setV('f-dl-num', t.drivers_license);
+  setV('f-dl-state', t.drivers_lic_st);
+  setV('f-ssn', t.ssn);
+  setV('f-sex', t.sex);
+  setV('f-race', t.race);
+  setV('f-hair', t.hair);
+  setV('f-eyes', t.eyes);
+  setV('f-height', t.height);
+  setV('f-weight', t.weight);
+  setV('f-vin', t.vin);
+  setV('f-tag-no', t.tag_no);
+  setV('f-tag-st', t.tag_st);
+  setV('f-veh-year', t.vehicle_year);
+  setV('f-veh-make', t.vehicle_make);
+  setV('f-veh-model', t.vehicle_model);
+  setV('f-veh-color', t.vehicle_color);
+  setV('f-forfeiture', t.forfeiture_amt);
+  setV('f-court-address', t.court_address);
+  setV('f-probable-cause', t.probable_cause);
+  setV('f-district', t.district);
+  if (t.date_of_birth) { var p=t.date_of_birth.split('/'); if(p.length===3) document.getElementById('f-def-dob').value=p[2]+'-'+p[0]+'-'+p[1]; }
+  if (t.issue_date_time) { var d=parseDT(t.issue_date_time); if(d) document.getElementById('f-issue-datetime').value=d; }
+  if (t.hrg_date_time) { var d2=parseDT(t.hrg_date_time); if(d2) document.getElementById('f-hrg-datetime').value=d2; }
+  ['f-hazmat','f-cdl','f-cmv','f-pass'].forEach(function(id,i){ var el=document.getElementById(id); if(el) el.checked=[t.hazmat,t.cdl,t.cmv,t.pass][i]; });
+  ['pc-personal-obs','pc-personal-inv','pc-fellow','pc-supplied','pc-other'].forEach(function(id,i){ var el=document.getElementById(id); if(el) el.checked=[t.pc_personal_obs,t.pc_personal_inv,t.pc_fellow,t.pc_supplied,t.pc_other][i]; });
+  if (t.age_type==='Juvenile') document.getElementById('f-juvenile').checked=true;
+  else document.getElementById('f-adult').checked=true;
+  if (t.offense_statute) {
+    var match = VA_CODES.find(function(c){ return c.code===t.offense_statute; });
+    if (match) {
+      selectedOffense = match;
+      var disp=document.getElementById('offense-selected-display');
+      document.getElementById('offense-selected-text').textContent='\u2713 '+match.code+' \u2014 '+match.desc;
+      disp.classList.add('visible');
+    }
+  }
+  setAppearance(t.hrg_type||'O');
+  calcTotal();
+  document.getElementById('ticket-num-display').textContent = t.violation_number;
+  showView('new-ticket', document.querySelectorAll('.sidebar-item')[1]);
+}
+
+function parseDT(str) {
+  if (!str) return '';
+  var m = str.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):\d{2}/);
+  if (!m) return '';
+  return m[3]+'-'+m[1]+'-'+m[2]+'T'+m[4]+':'+m[5];
+}
+
+// ===== DASHBOARD =====
+function refreshDashboard() {
+  document.getElementById('stat-total').textContent = tickets.length;
+  document.getElementById('stat-draft').textContent = 0;
+  document.getElementById('stat-mandatory').textContent = tickets.filter(function(t){return t.hrg_type==='M';}).length;
+  document.getElementById('stat-optional').textContent = tickets.filter(function(t){return t.hrg_type==='O';}).length;
+  var tbody = document.getElementById('dashboard-table');
+  if (!tickets.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">No tickets yet.</td></tr>'; return; }
+  tbody.innerHTML = tickets.slice(-10).reverse().map(function(t,i){
+    var idx = tickets.length-1-i;
+    return '<tr><td><span style="font-family:IBM Plex Mono,monospace;font-size:0.8rem">'+t.violation_number+'</span></td>'+
+      '<td>'+t.defendant_last_name+', '+t.defendant_first_name+'</td>'+
+      '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.78rem">'+t.offense_statute+'</td>'+
+      '<td style="font-size:0.78rem">'+t.issue_date_time+'</td>'+
+      '<td><span class="badge '+(t.hrg_type==='M'?'badge-mandatory':'badge-optional')+'">'+(t.hrg_type==='M'?'Mandatory':'Optional')+'</span></td>'+
+      '<td style="font-family:IBM Plex Mono,monospace">'+(t.total_due?'$'+t.total_due:'\u2014')+'</td>'+
+      '<td><div class="btn-row">'+
+        '<button class="btn-sm" onclick="loadTicket('+idx+')">Edit</button>'+
+        '<button class="btn-sm" onclick="previewTicket('+idx+')">Print</button>'+
+        '<button class="btn-sm danger" onclick="deleteTicket('+idx+')">Delete</button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+
+// ===== SAVED =====
+function refreshSaved() {
+  var q = (document.getElementById('saved-search') ? document.getElementById('saved-search').value : '').toLowerCase();
+  var filtered = tickets.filter(function(t){ return !q || (t.defendant_last_name+' '+t.defendant_first_name).toLowerCase().includes(q) || t.violation_number.toLowerCase().includes(q) || t.offense_statute.toLowerCase().includes(q); });
+  var tbody = document.getElementById('saved-table');
+  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">No notices found.</td></tr>'; return; }
+  tbody.innerHTML = filtered.map(function(t){
+    var idx = tickets.indexOf(t);
+    return '<tr><td><span style="font-family:IBM Plex Mono,monospace;font-size:0.8rem">'+t.violation_number+'</span></td>'+
+      '<td>'+t.defendant_last_name+', '+t.defendant_first_name+' '+t.defendant_middle_initial+'</td>'+
+      '<td style="font-size:0.78rem">'+t.offense_statute+'</td>'+
+      '<td style="font-size:0.78rem">'+t.issue_date_time+'</td>'+
+      '<td><span class="badge '+(t.hrg_type==='M'?'badge-mandatory':'badge-optional')+'">'+(t.hrg_type==='M'?'Mandatory':'Optional')+'</span></td>'+
+      '<td style="font-family:IBM Plex Mono,monospace">'+(t.total_due?'$'+t.total_due:'\u2014')+'</td>'+
+      '<td><div class="btn-row">'+
+        '<button class="btn-sm" onclick="loadTicket('+idx+')">Edit</button>'+
+        '<button class="btn-sm" onclick="previewTicket('+idx+')">Print</button>'+
+        '<button class="btn-sm" onclick="exportSingleXML('+idx+')">XML</button>'+
+        '<button class="btn-sm danger" onclick="deleteTicket('+idx+')">Delete</button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+
+function deleteTicket(idx) {
+  if (!confirm('Delete violation notice '+tickets[idx].violation_number+'?')) return;
+  tickets.splice(idx,1);
+  localStorage.setItem('cvb-tickets', JSON.stringify(tickets));
+  refreshDashboard(); refreshSaved();
+  showToast('\U0001f5d1\ufe0f Notice deleted');
+}
+
+// ===== XML =====
+function buildXML(t) {
+  function e(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  return '<?xml version="1.0"?>\n<root>\n  <ticket>\n' +
+    '    <location_code>'+e(t.location_code)+'</location_code>\n'+
+    '    <violation_number>'+e(t.violation_number)+'</violation_number>\n'+
+    '    <officer_name>'+e(t.officer_name)+'</officer_name>\n'+
+    '    <officer_number>'+e(t.officer_number)+'</officer_number>\n'+
+    '    <issue_date_time>'+e(t.issue_date_time)+'</issue_date_time>\n'+
+    '    <offense_code>'+e(t.offense_code)+'</offense_code>\n'+
+    '    <offense_statute>'+e(t.offense_statute)+'</offense_statute>\n'+
+    '    <offense_location>'+e(t.offense_location)+'</offense_location>\n'+
+    '    <offense_description>'+e(t.offense_description)+'</offense_description>\n'+
+    '    <actual_speed>'+e(t.actual_speed)+'</actual_speed>\n'+
+    '    <posted_speed>'+e(t.posted_speed)+'</posted_speed>\n'+
+    '    <defendant_last_name>'+e(t.defendant_last_name)+'</defendant_last_name>\n'+
+    '    <defendant_first_name>'+e(t.defendant_first_name)+'</defendant_first_name>\n'+
+    '    <defendant_middle_initial>'+e(t.defendant_middle_initial)+'</defendant_middle_initial>\n'+
+    '    <defendant_phone>'+e(t.defendant_phone)+'</defendant_phone>\n'+
+    '    <defendant_street_address>'+e(t.defendant_street_address)+'</defendant_street_address>\n'+
+    '    <defendant_city>'+e(t.defendant_city)+'</defendant_city>\n'+
+    '    <defendant_state>'+e(t.defendant_state)+'</defendant_state>\n'+
+    '    <defendant_zip>'+e(t.defendant_zip)+'</defendant_zip>\n'+
+    '    <drivers_license>'+e(t.drivers_license)+'</drivers_license>\n'+
+    '    <drivers_lic_st>'+e(t.drivers_lic_st)+'</drivers_lic_st>\n'+
+    '    <date_of_birth>'+e(t.date_of_birth)+'</date_of_birth>\n'+
+    '    <ssn>'+e(t.ssn)+'</ssn>\n'+
+    '    <hair>'+e(t.hair)+'</hair>\n'+
+    '    <eyes>'+e(t.eyes)+'</eyes>\n'+
+    '    <height>'+e(t.height)+'</height>\n'+
+    '    <weight>'+e(t.weight)+'</weight>\n'+
+    '    <race>'+e(t.race)+'</race>\n'+
+    '    <sex>'+e(t.sex)+'</sex>\n'+
+    '    <vin>'+e(t.vin)+'</vin>\n'+
+    '    <tag_no>'+e(t.tag_no)+'</tag_no>\n'+
+    '    <tag_st>'+e(t.tag_st)+'</tag_st>\n'+
+    '    <vehicle_year>'+e(t.vehicle_year)+'</vehicle_year>\n'+
+    '    <vehicle_make>'+e(t.vehicle_make)+'</vehicle_make>\n'+
+    '    <vehicle_color>'+e(t.vehicle_color)+'</vehicle_color>\n'+
+    '    <forfeiture_amt>'+e(t.hrg_type==='O'?t.forfeiture_amt:'')+'</forfeiture_amt>\n'+
+    '    <processing_fee>'+e(t.hrg_type==='O'?t.processing_fee:'')+'</processing_fee>\n'+
+    '    <total_due>'+e(t.hrg_type==='O'?t.total_due:'')+'</total_due>\n'+
+    '    <hrg_type>'+e(t.hrg_type)+'</hrg_type>\n'+
+    '    <hrg_date_time>'+e(t.hrg_date_time)+'</hrg_date_time>\n'+
+    '    <probable_cause>'+e(t.probable_cause)+'</probable_cause>\n'+
+    '  </ticket>\n</root>';
+}
+
+function exportXML() {
+  var data = collectFormData();
+  document.getElementById('xml-modal-content').textContent = buildXML(data);
+  document.getElementById('xml-modal').classList.add('open');
+}
+function exportSingleXML(idx) {
+  document.getElementById('xml-modal-content').textContent = buildXML(tickets[idx]);
+  document.getElementById('xml-modal').classList.add('open');
+}
+function copyModalXML() { navigator.clipboard.writeText(document.getElementById('xml-modal-content').textContent).then(function(){ showToast('\U0001f4cb XML copied'); }); }
+
+function refreshExportTable() {
+  var tbody = document.getElementById('export-table');
+  if (!tickets.length) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem;">No saved notices.</td></tr>'; return; }
+  tbody.innerHTML = tickets.map(function(t,i){
+    return '<tr><td><input type="checkbox" class="export-cb" value="'+i+'"></td>'+
+      '<td style="font-family:IBM Plex Mono,monospace;font-size:0.8rem">'+t.violation_number+'</td>'+
+      '<td>'+t.defendant_last_name+', '+t.defendant_first_name+'</td>'+
+      '<td style="font-size:0.78rem">'+t.issue_date_time+'</td>'+
+      '<td style="font-size:0.78rem">'+t.offense_statute+'</td></tr>';
+  }).join('');
+}
+function toggleAllExport(cb) { document.querySelectorAll('.export-cb').forEach(function(c){ c.checked=cb.checked; }); }
+function generateBatchXML() {
+  var sel = Array.from(document.querySelectorAll('.export-cb:checked')).map(function(c){ return tickets[parseInt(c.value)]; });
+  if (!sel.length) { showToast('\u26a0\ufe0f Select at least one ticket'); return; }
+  document.getElementById('xml-result').style.display='block';
+  document.getElementById('xml-output-text').textContent = sel.map(function(t){ return buildXML(t); }).join('\n\n<!-- ==================== -->\n\n');
+  showToast('\u2705 Generated XML for '+sel.length+' ticket(s)');
+}
+function copyXML() { navigator.clipboard.writeText(document.getElementById('xml-output-text').textContent).then(function(){ showToast('\U0001f4cb Copied'); }); }
+
+// ===== PRINT =====
+function showPrintPreview() { renderPrint(collectFormData()); showView('print', document.querySelectorAll('.sidebar-item')[5]); }
+function previewTicket(idx) { renderPrint(tickets[idx]); showView('print',null); }
+
+function renderPrint(t) {
+  var optBox = t.hrg_type==='O';
+  document.getElementById('print-area').innerHTML =
+    '<div class="print-header"><div><div style="font-size:0.65rem;letter-spacing:0.1em;opacity:0.7">(Rev. 1/2019)</div><h2>United States District Court<br>Violation Notice</h2></div><div><div style="font-size:0.65rem;opacity:0.7;margin-bottom:0.25rem">CVB Location Code</div><div class="print-loc-code">'+(t.location_code||'____')+'</div></div></div>'+
+    '<div class="print-row"><div class="print-cell" style="flex:2"><span class="print-cell-label">Violation Number</span><span class="print-cell-val">'+t.violation_number+'</span></div><div class="print-cell" style="flex:2"><span class="print-cell-label">Officer Name</span><span class="print-cell-val">'+t.officer_name+'</span></div><div class="print-cell"><span class="print-cell-label">Officer No.</span><span class="print-cell-val">'+t.officer_number+'</span></div></div>'+
+    '<div class="print-charge-box"><div class="print-charge-title">YOU ARE CHARGED WITH THE FOLLOWING VIOLATION</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin-bottom:0.4rem"><div><span class="print-cell-label">Date and Time</span><br><strong>'+t.issue_date_time+'</strong></div><div><span class="print-cell-label">Offense Charged</span><br><strong>'+t.offense_code+' \u2014 '+t.offense_statute+'</strong></div></div>'+
+    '<div style="margin-bottom:0.4rem"><span class="print-cell-label">Place of Offense</span><br><strong>'+t.offense_location+'</strong></div>'+
+    '<div><span class="print-cell-label">Offense Description</span><br><strong>'+t.offense_description+'</strong></div></div>'+
+    '<div style="padding:0.4rem 0.6rem;border-bottom:1px solid #ccc"><strong style="font-size:0.72rem;letter-spacing:0.08em">DEFENDANT INFORMATION</strong><span style="margin-left:1rem;font-size:0.78rem">Phone: '+t.defendant_phone+'</span></div>'+
+    '<div class="print-row"><div class="print-cell" style="flex:2"><span class="print-cell-label">Last Name</span><span class="print-cell-val">'+t.defendant_last_name+'</span></div><div class="print-cell" style="flex:2"><span class="print-cell-label">First Name</span><span class="print-cell-val">'+t.defendant_first_name+'</span></div><div class="print-cell"><span class="print-cell-label">M.I.</span><span class="print-cell-val">'+t.defendant_middle_initial+'</span></div></div>'+
+    '<div class="print-row"><div class="print-cell" style="flex:3"><span class="print-cell-label">Street Address</span><span class="print-cell-val">'+t.defendant_street_address+'</span></div></div>'+
+    '<div class="print-row"><div class="print-cell" style="flex:2"><span class="print-cell-label">City</span><span class="print-cell-val">'+t.defendant_city+'</span></div><div class="print-cell"><span class="print-cell-label">State</span><span class="print-cell-val">'+t.defendant_state+'</span></div><div class="print-cell"><span class="print-cell-label">ZIP</span><span class="print-cell-val">'+t.defendant_zip+'</span></div><div class="print-cell"><span class="print-cell-label">Date of Birth</span><span class="print-cell-val">'+t.date_of_birth+'</span></div></div>'+
+    '<div class="print-appearance">'+
+    '<div class="print-box print-box-a"><div class="print-box-title">A '+(t.hrg_type==='M'?'\u2611':'\u2610')+' APPEARANCE IS REQUIRED</div><div style="font-size:0.72rem">If Box A is checked, you must appear in court.</div></div>'+
+    '<div class="print-box"><div class="print-box-title">B '+(optBox?'\u2611':'\u2610')+' APPEARANCE IS OPTIONAL</div>'+
+    (optBox ? '<div style="font-size:0.72rem;margin-bottom:0.3rem">Pay total collateral or appear in court.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;font-size:0.75rem"><div>Forfeiture:</div><div>$'+t.forfeiture_amt+'</div><div>Processing Fee:</div><div>$30.00</div><div style="font-weight:700">PAY THIS AMOUNT:</div><div class="print-amount">$'+t.total_due+'</div></div><div style="font-size:0.65rem;margin-top:0.3rem">Pay at www.cvb.uscourts.gov</div>' : '<div style="font-size:0.72rem">Mandatory appearance \u2014 no collateral option.</div>')+
+    '</div></div>'+
+    '<div style="padding:0.4rem 0.6rem;border-top:1px solid #ccc"><strong style="font-size:0.68rem">YOUR COURT DATE</strong><span style="font-size:0.7rem;margin-left:0.5rem;color:#666">(If no date shown, you will be notified by mail.)</span><div style="font-size:0.78rem;margin-top:0.3rem"><span class="print-cell-label">Court Address</span> '+t.court_address+'</div></div>'+
+    '<div class="print-sig-area">My signature signifies that I have received a copy of this violation notice. It is not an admission of guilt. I promise to appear for the hearing at the time and place instructed or in lieu of appearance pay the total collateral due.<br><br>X Defendant _______________________________________<br><br><div style="display:flex;justify-content:space-between;font-size:0.65rem;color:#999;margin-top:0.3rem"><span>Defendant Copy \u2014 For Your Records</span><span>Original - CVB Copy</span></div></div>';
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+
+init();
+</script>
+</body>
+</html>
