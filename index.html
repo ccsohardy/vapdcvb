@@ -202,6 +202,17 @@
     .form-grid.cols-2,.form-grid.cols-3,.form-grid.cols-4,.form-grid.cols-5,.form-grid.cols-6 { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: 1fr 1fr; }
   }
+  .btn-scan {
+    background: var(--blue); color: #fff; border: none; border-radius: 4px;
+    padding: 0.3rem 0.75rem; font-size: 0.75rem; font-family: 'IBM Plex Sans', sans-serif;
+    cursor: pointer; font-weight: 600; transition: background 0.15s;
+  }
+  .btn-scan:hover { background: var(--navy); }
+  .submitted-badge {
+    display: inline-block; background: var(--success); color: #fff;
+    font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem;
+    border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; margin-left: 0.75rem;
+  }
   @media print {
     header, .sidebar, .form-actions, .page-header, .btn, #toast,
     .table-toolbar, .modal-overlay, #view-dashboard, #view-new-ticket,
@@ -383,7 +394,13 @@
 
           <!-- DEFENDANT -->
           <div class="form-section">
-            <div class="form-section-title">Defendant Information</div>
+            <div class="form-section-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Defendant Information</span>
+              <button class="btn-scan" onclick="startLicenseScan()" title="Click then scan barcode on back of license">📷 Scan License</button>
+            </div>
+            <div id="scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe">
+              ⏳ Ready to scan — swipe or scan the barcode on the back of the license...
+            </div>
             <div class="form-grid cols-4">
               <div class="field" style="grid-column:span 2">
                 <label>Last Name <span class="req">*</span></label>
@@ -521,7 +538,13 @@
 
           <!-- VEHICLE -->
           <div class="form-section">
-            <div class="form-section-title">Vehicle Information (if applicable)</div>
+            <div class="form-section-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Vehicle Information (if applicable)</span>
+              <button class="btn-scan" onclick="startRegScan()" title="Click then scan vehicle registration barcode">📷 Scan Registration</button>
+            </div>
+            <div id="reg-scan-status" style="display:none;font-size:0.78rem;padding:0.4rem 0.75rem;border-radius:4px;margin-bottom:0.75rem;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe">
+              ⏳ Ready to scan — scan the barcode on the vehicle registration...
+            </div>
             <div class="form-grid cols-5">
               <div class="field">
                 <label>Tag / Plate #</label>
@@ -752,12 +775,13 @@
 
         </div>
         <div class="form-actions">
-          <button class="btn btn-primary" onclick="saveTicket()">💾 Save Notice</button>
-          <button class="btn btn-gold" onclick="exportXML()">📤 Export XML</button>
-          <button class="btn btn-outline" onclick="showPrintPreview()">🖨️ Print Preview</button>
-          <button class="btn btn-outline" onclick="clearForm()">🗑️ Clear Form</button>
+          <button class="btn btn-primary" id="btn-submit" onclick="submitTicket()">✅ Submit Ticket</button>
+          <button class="btn btn-gold" id="btn-print-def" onclick="printDefendantCopy()" disabled style="opacity:0.4;cursor:not-allowed">🖨️ Print Defendant Copy</button>
+          <button class="btn btn-outline" id="btn-new-same" onclick="newCitationSameDefendant()" style="display:none">👤 New Citation — Same Defendant</button>
+          <button class="btn btn-outline" onclick="exportXML()">📤 Export XML</button>
+          <button class="btn btn-outline" id="btn-clear" onclick="clearForm()">🗑️ Clear Form</button>
           <span style="flex:1"></span>
-          <span style="font-size:0.75rem;color:var(--muted)">Data stored locally in your browser</span>
+          <span style="font-size:0.75rem;color:var(--muted)" id="submit-status">Data stored locally in your browser</span>
         </div>
       </div>
     </div>
@@ -1204,10 +1228,9 @@ function fmtDT(val) {
   var mm = String(d.getMonth()+1).padStart(2,'0');
   var dd = String(d.getDate()).padStart(2,'0');
   var yyyy = d.getFullYear();
-  var hh = String(d.getHours()%12||12).padStart(2,'0');
+  var hh = String(d.getHours()).padStart(2,'0');
   var mn = String(d.getMinutes()).padStart(2,'0');
-  var ampm = d.getHours()>=12?'PM':'AM';
-  return mm+'/'+dd+'/'+yyyy+' '+hh+':'+mn+':00 '+ampm;
+  return mm+'/'+dd+'/'+yyyy+' '+hh+':'+mn+':00';
 }
 function fmtDate(val) {
   if (!val) return '';
@@ -1232,6 +1255,462 @@ function saveTicket() {
   localStorage.setItem('cvb-tickets', JSON.stringify(tickets));
   showToast('\u2705 Saved: ' + data.violation_number);
   refreshDashboard();
+}
+
+function submitTicket() {
+  var data = collectFormData();
+  var err = validate(data);
+  if (err) { showToast('\u26a0\ufe0f ' + err); return; }
+  data.submitted = true;
+  data.submitted_at = new Date().toISOString();
+  if (editingIndex >= 0) tickets[editingIndex] = data;
+  else { tickets.push(data); editingIndex = tickets.length - 1; }
+  localStorage.setItem('cvb-tickets', JSON.stringify(tickets));
+
+  // Generate and download full PDF
+  generateFullPDF(data);
+
+  // Auto-download XML
+  setTimeout(function() { downloadXML(data); }, 800);
+
+  // Lock form fields
+  lockSubmittedForm();
+
+  // Unlock print button, show new citation button
+  var printBtn = document.getElementById('btn-print-def');
+  printBtn.disabled = false;
+  printBtn.style.opacity = '1';
+  printBtn.style.cursor = 'pointer';
+  document.getElementById('btn-new-same').style.display = 'inline-flex';
+  document.getElementById('btn-submit').style.display = 'none';
+  document.getElementById('btn-clear').style.display = 'none';
+  document.getElementById('submit-status').innerHTML = '<span class="submitted-badge">\u2705 Submitted</span> <span style="font-size:0.75rem;color:var(--muted)">' + data.violation_number + ' locked</span>';
+
+  showToast('\u2705 Ticket submitted: ' + data.violation_number);
+  refreshDashboard();
+}
+
+function lockSubmittedForm() {
+  var fields = document.querySelectorAll('#view-new-ticket input, #view-new-ticket select');
+  fields.forEach(function(f) { f.disabled = true; f.style.background = '#f0f0f0'; });
+  // Lock offense widget
+  var ow = document.getElementById('offense-search-input');
+  if (ow) { ow.disabled = true; }
+  var cats = document.querySelectorAll('.cat-chip, .offense-item');
+  cats.forEach(function(c) { c.style.pointerEvents = 'none'; c.style.opacity = '0.6'; });
+  // Lock scan buttons
+  document.querySelectorAll('.btn-scan').forEach(function(b) { b.disabled = true; b.style.opacity = '0.4'; });
+}
+
+function printDefendantCopy() {
+  var idx = editingIndex >= 0 ? editingIndex : tickets.length - 1;
+  if (idx < 0) return;
+  renderPrint(tickets[idx]);
+  showView('print', null);
+  setTimeout(function() { window.print(); }, 400);
+}
+
+function newCitationSameDefendant() {
+  var idx = editingIndex >= 0 ? editingIndex : tickets.length - 1;
+  if (idx < 0) { newTicket(); return; }
+  var t = tickets[idx];
+  editingIndex = -1;
+
+  // Clear form first
+  clearFormSilent();
+
+  // Re-fill defendant info
+  function setV(id, v) { var el=document.getElementById(id); if(el && v!==undefined) { el.disabled=false; el.style.background=''; el.value=v||''; } }
+  setV('f-def-last', t.defendant_last_name);
+  setV('f-def-first', t.defendant_first_name);
+  setV('f-def-mi', t.defendant_middle_initial);
+  setV('f-def-phone', t.defendant_phone);
+  setV('f-def-address', t.defendant_street_address);
+  setV('f-def-city', t.defendant_city);
+  setV('f-def-state', t.defendant_state);
+  setV('f-def-zip', t.defendant_zip);
+  setV('f-def-dob', t.date_of_birth ? (function(d){ var p=d.split('/'); return p.length===3?p[2]+'-'+p[0]+'-'+p[1]:''; })(t.date_of_birth) : '');
+  setV('f-dl-num', t.drivers_license);
+  setV('f-dl-state', t.drivers_lic_st);
+  setV('f-ssn', t.ssn);
+  setV('f-sex', t.sex);
+  setV('f-race', t.race);
+  setV('f-hair', t.hair);
+  setV('f-eyes', t.eyes);
+  setV('f-height', t.height);
+  setV('f-weight', t.weight);
+  // Vehicle
+  setV('f-tag-no', t.tag_no);
+  setV('f-tag-st', t.tag_st);
+  setV('f-veh-year', t.vehicle_year);
+  setV('f-veh-make', t.vehicle_make);
+  setV('f-veh-model', t.vehicle_model);
+  setV('f-veh-color', t.vehicle_color);
+  setV('f-vin', t.vin);
+  // Officer & location
+  setV('f-location-code', t.location_code);
+  setV('f-officer-name', t.officer_name);
+  setV('f-officer-number', t.officer_number);
+  setV('f-district', t.district);
+  // Probable cause carries over
+  setV('f-probable-cause', t.probable_cause);
+  ['pc-personal-obs','pc-personal-inv','pc-fellow','pc-supplied','pc-other'].forEach(function(id,i){
+    var el=document.getElementById(id); if(el){ el.disabled=false; el.checked=[t.pc_personal_obs,t.pc_personal_inv,t.pc_fellow,t.pc_supplied,t.pc_other][i]; }
+  });
+  if (t.age_type==='Juvenile') { var j=document.getElementById('f-juvenile'); if(j){j.disabled=false;j.checked=true;} }
+  else { var a=document.getElementById('f-adult'); if(a){a.disabled=false;a.checked=true;} }
+
+  // Reset submit/print buttons
+  document.getElementById('btn-submit').style.display = '';
+  document.getElementById('btn-clear').style.display = '';
+  document.getElementById('btn-new-same').style.display = 'none';
+  var printBtn = document.getElementById('btn-print-def');
+  printBtn.disabled = true; printBtn.style.opacity = '0.4'; printBtn.style.cursor = 'not-allowed';
+  document.getElementById('submit-status').textContent = 'Data stored locally in your browser';
+
+  // New violation number, reset time to now
+  resetTicketNum();
+  var now = new Date();
+  now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  var el = document.getElementById('f-issue-datetime');
+  if(el){el.disabled=false;el.style.background='';el.value=now.toISOString().slice(0,16);}
+  document.getElementById('f-hrg-datetime').value='';
+  document.getElementById('f-court-address').value='';
+
+  // Re-enable scan buttons
+  document.querySelectorAll('.btn-scan').forEach(function(b){b.disabled=false;b.style.opacity='1';});
+  // Re-enable offense widget
+  var ow=document.getElementById('offense-search-input'); if(ow)ow.disabled=false;
+  document.querySelectorAll('.cat-chip,.offense-item').forEach(function(c){c.style.pointerEvents='';c.style.opacity='';});
+  clearOffenseSelection();
+  setAppearance('O');
+  calcTotal();
+
+  showToast('\u2705 New citation started \u2014 defendant info carried over');
+  showView('new-ticket', document.querySelectorAll('.sidebar-item')[1]);
+}
+
+function clearFormSilent() {
+  // Same as clearForm but doesn't reset defendant/officer fields (used by newCitationSameDefendant)
+  var textIds = ['f-offense-location','f-offense-description','f-offense-statute','f-actual-speed','f-posted-speed','f-forfeiture'];
+  textIds.forEach(function(id) { var el=document.getElementById(id); if(el){el.disabled=false;el.style.background='';el.value='';} });
+  document.getElementById('f-offense-code').value='CFR';
+  clearOffenseSelection();
+  document.getElementById('offense-search-input').value='';
+  renderOffenseResults('');
+  setAppearance('O');
+  calcTotal();
+}
+
+function downloadXML(data) {
+  var xml = buildXML(data);
+  var blob = new Blob([xml], {type: 'application/xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = data.location_code + '_' + data.violation_number + '_' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '_CVB.xml';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── LICENSE SCANNER ──
+var scanMode = null;
+var scanBuffer = '';
+var scanTimer = null;
+
+function startLicenseScan() {
+  scanMode = 'license';
+  scanBuffer = '';
+  var s = document.getElementById('scan-status');
+  s.style.display = 'block';
+  s.textContent = '\u23f3 Ready to scan \u2014 swipe or scan the barcode on the back of the license...';
+  document.getElementById('offense-search-input').blur();
+  showToast('\U0001f4f7 Scan mode active \u2014 scan the license barcode now');
+}
+
+function startRegScan() {
+  scanMode = 'registration';
+  scanBuffer = '';
+  var s = document.getElementById('reg-scan-status');
+  s.style.display = 'block';
+  s.textContent = '\u23f3 Ready to scan \u2014 scan the barcode on the vehicle registration...';
+  showToast('\U0001f4f7 Scan mode active \u2014 scan the registration barcode now');
+}
+
+document.addEventListener('keydown', function(e) {
+  if (!scanMode) return;
+  if (e.key === 'Enter') {
+    processScan(scanBuffer);
+    scanBuffer = '';
+    clearTimeout(scanTimer);
+    return;
+  }
+  if (e.key.length === 1) {
+    scanBuffer += e.key;
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(function() {
+      if (scanBuffer.length > 10) processScan(scanBuffer);
+      scanBuffer = '';
+    }, 100);
+  }
+});
+
+function processScan(raw) {
+  var s = document.getElementById('scan-status');
+  var rs = document.getElementById('reg-scan-status');
+  if (scanMode === 'license') {
+    var parsed = parseAAMVA(raw);
+    if (!parsed) {
+      if(s) { s.style.background='#fee2e2';s.style.color='#991b1b';s.style.borderColor='#fca5a5'; s.textContent='\u274c Could not read barcode. Try again or enter manually.'; }
+      scanMode = null; return;
+    }
+    // Check for existing data
+    var hasData = document.getElementById('f-def-last').value || document.getElementById('f-def-first').value;
+    if (hasData) {
+      if (!confirm('Defendant fields already have data. Overwrite with scanned license?')) { scanMode=null; if(s)s.style.display='none'; return; }
+    }
+    fillLicenseData(parsed);
+    if(s) { s.style.background='#dcfce7';s.style.color='#166534';s.style.borderColor='#86efac'; s.textContent='\u2705 License scanned: '+parsed.last+', '+parsed.first; }
+    setTimeout(function(){ if(s)s.style.display='none'; }, 3000);
+  } else if (scanMode === 'registration') {
+    var parsed2 = parseRegistration(raw);
+    if (!parsed2) {
+      if(rs) { rs.style.background='#fee2e2';rs.style.color='#991b1b';rs.style.borderColor='#fca5a5'; rs.textContent='\u274c Could not read barcode. Try again or enter manually.'; }
+      scanMode = null; return;
+    }
+    var hasVeh = document.getElementById('f-tag-no').value || document.getElementById('f-vin').value;
+    if (hasVeh) {
+      if (!confirm('Vehicle fields already have data. Overwrite with scanned registration?')) { scanMode=null; if(rs)rs.style.display='none'; return; }
+    }
+    fillRegistrationData(parsed2);
+    if(rs) { rs.style.background='#dcfce7';rs.style.color='#166534';rs.style.borderColor='#86efac'; rs.textContent='\u2705 Registration scanned: '+parsed2.plate; }
+    setTimeout(function(){ if(rs)rs.style.display='none'; }, 3000);
+  }
+  scanMode = null;
+}
+
+function parseAAMVA(raw) {
+  // AAMVA PDF417 driver license barcode standard
+  try {
+    if (raw.indexOf('@') === -1 && raw.indexOf('ANSI') === -1) return null;
+    var data = {};
+    // Extract subfile data
+    var fields = {
+      'DCS': 'last', 'DAC': 'first', 'DAD': 'middle',
+      'DBB': 'dob', 'DAG': 'address', 'DAI': 'city',
+      'DAJ': 'state', 'DAK': 'zip', 'DAQ': 'dl_num',
+      'DAU': 'height', 'DAY': 'eyes', 'DBC': 'sex',
+      'DCL': 'race', 'DAW': 'weight'
+    };
+    Object.keys(fields).forEach(function(code) {
+      var idx = raw.indexOf(code);
+      if (idx !== -1) {
+        var start = idx + code.length;
+        var end = raw.indexOf('\n', start);
+        if (end === -1) end = raw.indexOf('\r', start);
+        if (end === -1) end = start + 30;
+        data[fields[code]] = raw.substring(start, end).replace(/\r/g,'').trim();
+      }
+    });
+    if (!data.last && !data.first) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+function fillLicenseData(d) {
+  function setV(id,v){ var el=document.getElementById(id); if(el&&v){ el.value=v; } }
+  if(d.last) setV('f-def-last', d.last.toUpperCase());
+  if(d.first) setV('f-def-first', d.first.toUpperCase());
+  if(d.middle) setV('f-def-mi', d.middle.substring(0,1).toUpperCase());
+  if(d.address) setV('f-def-address', d.address.substring(0,35));
+  if(d.city) setV('f-def-city', d.city);
+  if(d.state) setV('f-def-state', d.state);
+  if(d.zip) setV('f-def-zip', d.zip.substring(0,5));
+  if(d.dl_num) setV('f-dl-num', d.dl_num);
+  if(d.state) setV('f-dl-state', d.state);
+  if(d.dob) {
+    // AAMVA DOB format: MMDDYYYY
+    var dob = d.dob.replace(/\D/g,'');
+    if(dob.length===8) {
+      var yr=dob.substring(4,8), mo=dob.substring(0,2), dy=dob.substring(2,4);
+      setV('f-def-dob', yr+'-'+mo+'-'+dy);
+    }
+  }
+  if(d.height) {
+    // AAMVA height often in FTI (e.g. 510 = 5'10")
+    var ht = d.height.replace(/\D/g,'');
+    if(ht.length===3) { var htStr=ht[0]+"'"+ht.substring(1)+'"'; setV('f-height', htStr); }
+  }
+  if(d.eyes) {
+    var eyeMap={'BRN':'BRN','BLU':'BLU','GRN':'GRN','HAZ':'HAZ','GRY':'GRY','BLK':'BLK'};
+    var ey = d.eyes.toUpperCase().substring(0,3);
+    if(eyeMap[ey]) setV('f-eyes', eyeMap[ey]);
+  }
+  if(d.sex) {
+    setV('f-sex', d.sex==='1'||d.sex.toUpperCase()==='M'?'M':'F');
+  }
+  if(d.weight) setV('f-weight', d.weight.replace(/\D/g,''));
+}
+
+function parseRegistration(raw) {
+  try {
+    var data = {};
+    // Try common registration barcode fields
+    var vinIdx = raw.search(/[A-HJ-NPR-Z0-9]{17}/);
+    if(vinIdx !== -1) data.vin = raw.substring(vinIdx, vinIdx+17);
+    // Plate
+    var plateMatch = raw.match(/([A-Z0-9]{3,8})/);
+    if(plateMatch) data.plate = plateMatch[1];
+    // Year
+    var yearMatch = raw.match(/(20[0-9]{2}|19[6-9][0-9])/);
+    if(yearMatch) data.year = yearMatch[1];
+    if(!data.vin && !data.plate) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+function fillRegistrationData(d) {
+  function setV(id,v){ var el=document.getElementById(id); if(el&&v){ el.value=v; } }
+  if(d.vin) setV('f-vin', d.vin);
+  if(d.plate) setV('f-tag-no', d.plate);
+  if(d.year) setV('f-veh-year', d.year);
+}
+
+// ── FULL PDF GENERATION ──
+function generateFullPDF(t) {
+  var win = window.open('', '_blank');
+  if (!win) { showToast('\u26a0\ufe0f Allow popups to generate PDF'); return; }
+  var military = t.issue_date_time || '';
+  var optBox = t.hrg_type === 'O';
+  var pcBasis = [];
+  if(t.pc_personal_obs) pcBasis.push('My personal observation');
+  if(t.pc_personal_inv) pcBasis.push('My personal investigation');
+  if(t.pc_fellow) pcBasis.push("Fellow officer's observation");
+  if(t.pc_supplied) pcBasis.push('Information supplied to me');
+  if(t.pc_other) pcBasis.push('Other');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+    '<title>USDCVN '+t.violation_number+'</title>'+
+    '<style>'+
+    'body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:0;color:#000;}'+
+    '.page{width:8.5in;min-height:11in;padding:0.5in;box-sizing:border-box;position:relative;}'+
+    '.header{background:#0a1628;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;}'+
+    '.header h1{font-size:14px;margin:0;font-family:Georgia,serif;}'+
+    '.loc-code{border:1px solid rgba(255,255,255,0.5);padding:3px 10px;font-family:monospace;font-size:12px;}'+
+    '.row{display:flex;border-bottom:1px solid #ccc;}'+
+    '.cell{padding:4px 8px;flex:1;}'+
+    '.cell-label{font-size:8px;text-transform:uppercase;letter-spacing:0.06em;color:#666;display:block;}'+
+    '.cell-val{font-weight:700;font-size:11px;}'+
+    '.charge-box{border:2px solid #000;margin:6px 0;padding:6px 8px;}'+
+    '.charge-title{font-size:8px;text-transform:uppercase;letter-spacing:0.1em;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:4px;font-weight:700;}'+
+    '.appear-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #ccc;margin-top:4px;}'+
+    '.appear-box{padding:6px 8px;}'+
+    '.appear-box-a{border-right:1px solid #ccc;}'+
+    '.appear-title{font-size:8px;font-weight:700;text-transform:uppercase;margin-bottom:3px;}'+
+    '.amount{font-family:monospace;font-size:14px;font-weight:700;}'+
+    '.sig-area{padding:6px 8px;border-top:1px solid #ccc;font-size:9px;}'+
+    '.pc-section{margin-top:12px;border:1px solid #ccc;padding:8px;}'+
+    '.pc-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;border-bottom:1px solid #ccc;padding-bottom:4px;margin-bottom:6px;}'+
+    '.pc-text{font-size:10px;line-height:1.6;white-space:pre-wrap;}'+
+    '.pc-basis{margin-top:8px;font-size:9px;border-top:1px solid #eee;padding-top:6px;}'+
+    '.fold-mark{position:absolute;left:0;width:14px;border-top:1px dashed #999;}'+
+    '.watermark{font-size:8px;color:#999;text-align:center;margin-top:8px;}'+
+    '.full-badge{background:#0a1628;color:#fff;font-size:8px;font-weight:700;padding:2px 6px;border-radius:2px;letter-spacing:0.08em;}'+
+    '@media print{body{margin:0;}.page{padding:0.4in;}}'+
+    '</style></head><body>'+
+    '<div class="page">'+
+    // Fold marks at 1/3 and 2/3 of 11in page (approx 3.67in and 7.33in from top = 264px and 528px at 72dpi)
+    '<div class="fold-mark" style="top:264px"></div>'+
+    '<div class="fold-mark" style="top:528px"></div>'+
+    '<div class="header">'+
+      '<div><div style="font-size:8px;color:#c8a84b;letter-spacing:0.1em">(Rev. 1/2019) &nbsp; <span class="full-badge">FULL COPY — NOT FOR DEFENDANT</span></div>'+
+      '<h1>United States District Court &mdash; Violation Notice</h1></div>'+
+      '<div><div style="font-size:8px;color:#aaa;margin-bottom:3px">CVB Location Code</div><div class="loc-code">'+t.location_code+'</div></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="cell" style="flex:2"><span class="cell-label">Violation Number</span><span class="cell-val">'+t.violation_number+'</span></div>'+
+      '<div class="cell" style="flex:2"><span class="cell-label">Officer Name</span><span class="cell-val">'+t.officer_name+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Officer No.</span><span class="cell-val">'+t.officer_number+'</span></div>'+
+    '</div>'+
+    '<div class="charge-box">'+
+      '<div class="charge-title">You Are Charged With The Following Violation</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">'+
+        '<div><span class="cell-label">Date and Time of Offense (24hr)</span><strong>'+military+'</strong></div>'+
+        '<div><span class="cell-label">Offense Charged</span><strong>'+t.offense_code+' &mdash; '+t.offense_statute+'</strong></div>'+
+      '</div>'+
+      '<div style="margin-bottom:4px"><span class="cell-label">Place of Offense</span><strong>'+t.offense_location+'</strong></div>'+
+      '<div><span class="cell-label">Offense Description / Factual Basis</span><strong>'+t.offense_description+'</strong></div>'+
+      (t.actual_speed ? '<div style="margin-top:4px"><span class="cell-label">Speed</span><strong>Actual: '+t.actual_speed+' MPH &nbsp;|&nbsp; Posted: '+t.posted_speed+' MPH</strong></div>' : '')+
+    '</div>'+
+    '<div style="padding:4px 8px;border-bottom:1px solid #ccc;font-weight:700;font-size:10px">DEFENDANT INFORMATION <span style="font-weight:400;margin-left:12px">Phone: '+t.defendant_phone+'</span></div>'+
+    '<div class="row">'+
+      '<div class="cell" style="flex:2"><span class="cell-label">Last Name</span><span class="cell-val">'+t.defendant_last_name+'</span></div>'+
+      '<div class="cell" style="flex:2"><span class="cell-label">First Name</span><span class="cell-val">'+t.defendant_first_name+'</span></div>'+
+      '<div class="cell"><span class="cell-label">M.I.</span><span class="cell-val">'+t.defendant_middle_initial+'</span></div>'+
+    '</div>'+
+    '<div class="row"><div class="cell" style="flex:3"><span class="cell-label">Street Address</span><span class="cell-val">'+t.defendant_street_address+'</span></div></div>'+
+    '<div class="row">'+
+      '<div class="cell" style="flex:2"><span class="cell-label">City</span><span class="cell-val">'+t.defendant_city+'</span></div>'+
+      '<div class="cell"><span class="cell-label">State</span><span class="cell-val">'+t.defendant_state+'</span></div>'+
+      '<div class="cell"><span class="cell-label">ZIP</span><span class="cell-val">'+t.defendant_zip+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Date of Birth</span><span class="cell-val">'+t.date_of_birth+'</span></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="cell"><span class="cell-label">DL #</span><span class="cell-val">'+t.drivers_license+'</span></div>'+
+      '<div class="cell"><span class="cell-label">DL State</span><span class="cell-val">'+t.drivers_lic_st+'</span></div>'+
+      '<div class="cell"><span class="cell-label">SSN</span><span class="cell-val">'+t.ssn+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Sex</span><span class="cell-val">'+t.sex+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Race</span><span class="cell-val">'+t.race+'</span></div>'+
+    '</div>'+
+    '<div class="row">'+
+      '<div class="cell"><span class="cell-label">Hair</span><span class="cell-val">'+t.hair+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Eyes</span><span class="cell-val">'+t.eyes+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Height</span><span class="cell-val">'+t.height+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Weight</span><span class="cell-val">'+t.weight+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Age</span><span class="cell-val">'+t.age_type+'</span></div>'+
+    '</div>'+
+    '<div style="padding:4px 8px;border-bottom:1px solid #ccc;font-weight:700;font-size:10px">VEHICLE</div>'+
+    '<div class="row">'+
+      '<div class="cell"><span class="cell-label">Plate</span><span class="cell-val">'+t.tag_no+'</span></div>'+
+      '<div class="cell"><span class="cell-label">State</span><span class="cell-val">'+t.tag_st+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Year</span><span class="cell-val">'+t.vehicle_year+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Make/Model</span><span class="cell-val">'+t.vehicle_make+' '+t.vehicle_model+'</span></div>'+
+      '<div class="cell"><span class="cell-label">Color</span><span class="cell-val">'+t.vehicle_color+'</span></div>'+
+    '</div>'+
+    '<div class="row"><div class="cell" style="flex:3"><span class="cell-label">VIN</span><span class="cell-val">'+t.vin+'</span></div></div>'+
+    '<div class="appear-grid">'+
+      '<div class="appear-box appear-box-a">'+
+        '<div class="appear-title">A '+(t.hrg_type==='M'?'&#9745;':'&#9744;')+' Appearance Is Required</div>'+
+        '<div style="font-size:9px">If Box A is checked, defendant must appear in court.</div>'+
+      '</div>'+
+      '<div class="appear-box">'+
+        '<div class="appear-title">B '+(optBox?'&#9745;':'&#9744;')+' Appearance Is Optional</div>'+
+        (optBox?'<div style="font-size:9px">Forfeiture: $'+t.forfeiture_amt+'<br>Processing Fee: $30.00<br><strong>PAY THIS AMOUNT: $'+t.total_due+'</strong></div>':'<div style="font-size:9px">Mandatory appearance &mdash; no collateral option.</div>')+
+      '</div>'+
+    '</div>'+
+    '<div style="padding:4px 8px;border-top:1px solid #ccc;font-size:9px">'+
+      '<strong>YOUR COURT DATE</strong> <span style="color:#666">(If no date shown, defendant will be notified by mail.)</span>'+
+      (t.court_address?'<br>Court Address: '+t.court_address:'') +
+    '</div>'+
+    '<div class="sig-area">My signature signifies that I have received a copy of this violation notice. It is not an admission of guilt.<br><br>X Defendant _______________________________________</div>'+
+    '<div class="pc-section">'+
+      '<div class="pc-title">Statement of Probable Cause &mdash; District of '+t.district+'</div>'+
+      '<div class="pc-text">'+t.probable_cause.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'+
+      (pcBasis.length?'<div class="pc-basis"><strong>Based upon:</strong> '+pcBasis.join(', ')+'</div>':'')+
+      '<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:9px">'+
+        '<div>Executed: _____________ &nbsp; Officer Signature: _________________________</div>'+
+        '<div>Magistrate Judge: _________________________</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="watermark">USDCVN Full Officer Copy &mdash; '+t.violation_number+' &mdash; Submitted: '+new Date().toLocaleString()+'</div>'+
+  '</div>'+
+  '<script>window.onload=function(){window.print();}<\/script>'+
+  '</body></html>';
+
+  win.document.write(html);
+  win.document.close();
 }
 
 // ===== CLEAR =====
@@ -1334,12 +1813,9 @@ function loadTicket(idx) {
 
 function parseDT(str) {
   if (!str) return '';
-  var m = str.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):\d{2} (AM|PM)/);
+  var m = str.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):\d{2}/);
   if (!m) return '';
-  var h = parseInt(m[4]);
-  if (m[6]==='PM' && h<12) h+=12;
-  if (m[6]==='AM' && h===12) h=0;
-  return m[3]+'-'+m[1]+'-'+m[2]+'T'+String(h).padStart(2,'0')+':'+m[5];
+  return m[3]+'-'+m[1]+'-'+m[2]+'T'+m[4]+':'+m[5];
 }
 
 // ===== DASHBOARD =====
@@ -1428,6 +1904,8 @@ function buildXML(t) {
     '    <eyes>'+e(t.eyes)+'</eyes>\n'+
     '    <height>'+e(t.height)+'</height>\n'+
     '    <weight>'+e(t.weight)+'</weight>\n'+
+    '    <race>'+e(t.race)+'</race>\n'+
+    '    <sex>'+e(t.sex)+'</sex>\n'+
     '    <vin>'+e(t.vin)+'</vin>\n'+
     '    <tag_no>'+e(t.tag_no)+'</tag_no>\n'+
     '    <tag_st>'+e(t.tag_st)+'</tag_st>\n'+
